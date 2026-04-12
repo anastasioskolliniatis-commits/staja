@@ -1,771 +1,500 @@
-<%inherit file="//html/base.html" />
-<%block name="title">Alert Manager — Incidents</%block>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alert Manager — Incidents</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #0f0f1a; color: #ccc; font-family: "Splunk Platform Sans", Arial, sans-serif; font-size: 13px; }
 
-<%block name="css">
-<style>
-  #am { padding: 24px; }
-
-  /* ── Header ── */
-  .am-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  .am-header h2 { margin: 0; color: #fff; font-size: 22px; font-weight: 500; }
-
-  /* ── Stats bar ── */
-  .am-stats { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-  .am-stat {
-    background: #1c1c2e;
-    border: 1px solid #2e2e45;
-    border-radius: 4px;
-    padding: 10px 18px;
-    text-align: center;
-    min-width: 90px;
-  }
-  .am-stat .n { font-size: 26px; font-weight: 700; color: #fff; }
-  .am-stat .l { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: .5px; }
-
-  /* ── Filters ── */
-  .am-filters {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .am-filters select,
-  .am-filters input[type=text] {
-    padding: 6px 10px;
-    background: #1c1c2e;
-    border: 1px solid #3a3a55;
-    color: #ccc;
-    border-radius: 3px;
-    font-size: 13px;
-  }
-  .am-filters input[type=text] { min-width: 200px; }
-
-  /* ── Table ── */
-  table.am-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .am-table th {
-    background: #1c1c2e;
-    color: #888;
-    padding: 9px 12px;
-    text-align: left;
-    border-bottom: 2px solid #2e2e45;
-    white-space: nowrap;
-    font-weight: 500;
-    text-transform: uppercase;
-    font-size: 11px;
-    letter-spacing: .4px;
-  }
-  .am-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #22223a;
-    vertical-align: middle;
-  }
-  .am-table tbody tr:hover { background: rgba(255,255,255,.03); cursor: pointer; }
-
-  /* ── Badges ── */
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .3px;
-  }
-  .sev-critical { background:#7a0000; color:#ffaaaa; }
-  .sev-high     { background:#7a3800; color:#ffcc88; }
-  .sev-medium   { background:#5c4d00; color:#ffe066; }
-  .sev-low      { background:#1a4a1a; color:#88ee88; }
-  .sev-info     { background:#1a2e50; color:#88bbff; }
-
-  .st-new         { background:#333;    color:#aaa; }
-  .st-assigned    { background:#1a3050; color:#6fb3f0; }
-  .st-in_progress { background:#1a4a1a; color:#6ff06f; }
-  .st-on_hold     { background:#4a3800; color:#f0c040; }
-  .st-resolved    { background:#1e1e1e; color:#555; }
-
-  /* ── Overlay / Modal ── */
-  .am-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.72);
-    z-index: 900;
-    align-items: center;
-    justify-content: center;
-  }
-  .am-overlay.open { display: flex; }
-
-  .am-modal {
-    background: #1c1c2e;
-    border: 1px solid #3a3a55;
-    border-radius: 6px;
-    padding: 26px;
-    width: 660px;
-    max-width: 96vw;
-    max-height: 88vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 40px rgba(0,0,0,.6);
-  }
-  .am-modal h3 {
-    margin: 0 0 22px;
-    color: #fff;
-    font-size: 16px;
-    font-weight: 500;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .modal-close { cursor: pointer; color: #555; font-size: 22px; line-height: 1; }
-  .modal-close:hover { color: #fff; }
-
-  /* ── Form ── */
-  .fg { margin-bottom: 14px; }
-  .fg label {
-    display: block;
-    color: #777;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    margin-bottom: 5px;
-  }
-  .fg input,
-  .fg select,
-  .fg textarea {
-    width: 100%;
-    padding: 8px 10px;
-    background: #12121f;
-    border: 1px solid #3a3a55;
-    color: #ddd;
-    border-radius: 3px;
-    box-sizing: border-box;
-    font-size: 13px;
-  }
-  .fg textarea { resize: vertical; min-height: 72px; }
-  .fg-row { display: flex; gap: 12px; }
-  .fg-row .fg { flex: 1; }
-
-  /* ── Buttons ── */
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.4;
-  }
-  .btn-primary { background: #1a5ca8; color: #fff; }
-  .btn-primary:hover { background: #1f70cc; }
-  .btn-danger  { background: #7a0000; color: #ffaaaa; }
-  .btn-danger:hover { background: #990000; }
-  .btn-ghost   { background: transparent; color: #888; border: 1px solid #3a3a55; }
-  .btn-ghost:hover { background: #2a2a40; color: #ccc; }
-
-  .modal-footer {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    align-items: center;
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px solid #2e2e45;
-  }
-  .modal-footer .left { margin-right: auto; }
-
-  /* ── Comments ── */
-  .comments-wrap { margin-top: 22px; border-top: 1px solid #2e2e45; padding-top: 16px; }
-  .comments-wrap h4 { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; margin: 0 0 12px; }
-  .comment {
-    background: #12121f;
-    border: 1px solid #2a2a40;
-    border-radius: 3px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-  }
-  .comment-meta { font-size: 11px; color: #555; margin-bottom: 4px; }
-  .comment-text { color: #bbb; font-size: 13px; }
-  .comment-sc   { font-size: 11px; color: #666; font-style: italic; margin-top: 3px; }
-  .add-comment textarea {
-    width: 100%;
-    box-sizing: border-box;
-    background: #12121f;
-    border: 1px solid #3a3a55;
-    color: #ddd;
-    padding: 8px 10px;
-    border-radius: 3px;
-    resize: vertical;
-    min-height: 56px;
-    font-size: 13px;
-    margin-bottom: 8px;
-  }
-
-  /* ── Misc ── */
-  .inc-id    { font-family: monospace; color: #6fb3f0; font-weight: 700; font-size: 12px; }
-  .dim       { color: #555; font-size: 11px; }
-  .unassigned { color: #444; font-style: italic; font-size: 12px; }
-  .loading   { text-align: center; color: #555; padding: 48px; font-size: 14px; }
-  .empty     { text-align: center; color: #444; padding: 64px; font-size: 14px; }
-
-  /* ── Toast ── */
-  #am-toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    padding: 11px 20px;
-    border-radius: 4px;
-    font-size: 13px;
-    z-index: 9999;
-    display: none;
-    pointer-events: none;
-  }
-  #am-toast.ok  { background: #1a4a1a; color: #88ee88; border: 1px solid #2a6a2a; display: block; }
-  #am-toast.err { background: #7a0000; color: #ffaaaa; border: 1px solid #990000; display: block; }
-</style>
-</%block>
-
-<%block name="content">
-<div id="am">
-
-  <!-- Header -->
-  <div class="am-header">
-    <h2>Alert Manager</h2>
-    <button class="btn btn-primary" onclick="AM.openCreate()">+ New Incident</button>
-  </div>
-
-  <!-- Stats -->
-  <div class="am-stats">
-    <div class="am-stat"><div class="n" id="s-total">—</div><div class="l">Total</div></div>
-    <div class="am-stat"><div class="n" id="s-new"         style="color:#aaa">—</div><div class="l">New</div></div>
-    <div class="am-stat"><div class="n" id="s-assigned"    style="color:#6fb3f0">—</div><div class="l">Assigned</div></div>
-    <div class="am-stat"><div class="n" id="s-in_progress" style="color:#6ff06f">—</div><div class="l">In Progress</div></div>
-    <div class="am-stat"><div class="n" id="s-on_hold"     style="color:#f0c040">—</div><div class="l">On Hold</div></div>
-    <div class="am-stat"><div class="n" id="s-resolved"    style="color:#555">—</div><div class="l">Resolved</div></div>
-  </div>
-
-  <!-- Filters -->
-  <div class="am-filters">
-    <select id="f-status" onchange="AM.filter()">
-      <option value="">All Statuses</option>
-      <option value="new">New</option>
-      <option value="assigned">Assigned</option>
-      <option value="in_progress">In Progress</option>
-      <option value="on_hold">On Hold</option>
-      <option value="resolved">Resolved</option>
-    </select>
-    <select id="f-severity" onchange="AM.filter()">
-      <option value="">All Severities</option>
-      <option value="critical">Critical</option>
-      <option value="high">High</option>
-      <option value="medium">Medium</option>
-      <option value="low">Low</option>
-      <option value="info">Info</option>
-    </select>
-    <input type="text" id="f-search" placeholder="Search by title or INC…" oninput="AM.filter()">
-    <button class="btn btn-ghost" onclick="AM.load()">↻ Refresh</button>
-  </div>
-
-  <!-- Table -->
-  <div id="am-table"><div class="loading">Loading incidents…</div></div>
-</div>
-
-<!-- Modal -->
-<div class="am-overlay" id="am-modal" onclick="AM.overlayClick(event)">
-  <div class="am-modal">
-
-    <h3 id="modal-heading">
-      New Incident
-      <span class="modal-close" onclick="AM.close()">×</span>
-    </h3>
-
-    <input type="hidden" id="m-key">
-    <input type="hidden" id="m-inc-id">
-    <input type="hidden" id="m-old-status">
-
-    <div class="fg">
-      <label>Title *</label>
-      <input type="text" id="m-title" placeholder="Brief description of the incident">
-    </div>
-
-    <div class="fg">
-      <label>Description</label>
-      <textarea id="m-desc" placeholder="What happened? What is the impact?"></textarea>
-    </div>
-
-    <div class="fg-row">
-      <div class="fg">
-        <label>Severity</label>
-        <select id="m-sev">
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium" selected>Medium</option>
-          <option value="low">Low</option>
-          <option value="info">Info</option>
-        </select>
-      </div>
-      <div class="fg">
-        <label>Status</label>
-        <select id="m-status">
-          <option value="new">New</option>
-          <option value="assigned">Assigned</option>
-          <option value="in_progress">In Progress</option>
-          <option value="on_hold">On Hold</option>
-          <option value="resolved">Resolved</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="fg-row">
-      <div class="fg">
-        <label>Assign to User</label>
-        <select id="m-user">
-          <option value="">— Unassigned —</option>
-        </select>
-      </div>
-      <div class="fg">
-        <label>Assign to Role</label>
-        <select id="m-role">
-          <option value="">— No Role —</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Comments (edit mode only) -->
-    <div class="comments-wrap" id="comments-wrap" style="display:none">
-      <h4>Activity</h4>
-      <div id="comments-list"></div>
-      <div class="add-comment">
-        <textarea id="new-comment" placeholder="Add a comment…"></textarea>
-        <button class="btn btn-ghost" onclick="AM.addComment()">Add Comment</button>
-      </div>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-danger left" id="btn-delete"
-              onclick="AM.deleteInc()" style="display:none">Delete</button>
-      <button class="btn btn-ghost" onclick="AM.close()">Cancel</button>
-      <button class="btn btn-primary" onclick="AM.save()">Save</button>
-    </div>
-
-  </div>
-</div>
-
-<div id="am-toast"></div>
-</%block>
-
-<%block name="js_bottom">
-<script>
-(function () {
-'use strict';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────────────────────────────────────────
-var APP = 'alert_manager';
-var _locale = (location.pathname.match(/^\/([^/]+)/) || ['', 'en-US'])[1];
-var KV   = '/' + _locale + '/splunkd/__raw/servicesNS/nobody/' + APP + '/storage/collections/data';
-var AUTH = '/' + _locale + '/splunkd/__raw/services';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────────────────────────────────────
-var _incidents = [];
-var _users     = [];
-var _roles     = [];
-var _editMode  = false;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CSRF
-// ─────────────────────────────────────────────────────────────────────────────
-function formKey() {
-  var m = document.cookie.match(/splunkd_form_%2F=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : '';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HTTP helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function req(url, opts) {
-  opts = opts || {};
-  var headers = Object.assign({
-    'X-Splunk-Form-Key': formKey(),
-    'X-Requested-With':  'XMLHttpRequest'
-  }, opts.headers || {});
-  return fetch(url, Object.assign({}, opts, { headers: headers, credentials: 'include' }))
-    .then(function (r) {
-      if (!r.ok) return r.text().then(function(t){ throw new Error(r.status + ': ' + t); });
-      return r.json().catch(function(){ return {}; });
-    });
-}
-
-function kvGet(col, query) {
-  var url = KV + '/' + col + '?output_mode=json&count=-1';
-  if (query) url += '&query=' + encodeURIComponent(JSON.stringify(query));
-  return req(url);
-}
-
-function kvPost(col, data, key) {
-  var url = KV + '/' + col + (key ? '/' + encodeURIComponent(key) : '') + '?output_mode=json';
-  return req(url, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(data)
-  });
-}
-
-function kvDel(col, key) {
-  return req(KV + '/' + col + '/' + encodeURIComponent(key) + '?output_mode=json',
-             { method: 'DELETE' });
-}
-
-function authGet(path) {
-  return req(AUTH + path + '?output_mode=json&count=-1');
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Incident numbering
-// ─────────────────────────────────────────────────────────────────────────────
-function nextIncId() {
-  return kvGet('incident_counter').then(function (rows) {
-    var n;
-    if (!rows || !rows.length) {
-      n = 1;
-      return kvPost('incident_counter', { _key: 'main', counter: 1 })
-             .then(function () { return fmt(n); });
+    /* ── Top bar ── */
+    .topbar {
+      background: #1c1c2e;
+      border-bottom: 1px solid #2e2e45;
+      padding: 0 24px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    n = (parseInt(rows[0].counter, 10) || 0) + 1;
-    return kvPost('incident_counter', { counter: n }, 'main')
-           .then(function () { return fmt(n); });
-  });
-  function fmt(n) { return 'INC-' + String(n).padStart(3, '0'); }
-}
+    .topbar .brand { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: .3px; }
+    .topbar .back  { color: #6fb3f0; font-size: 12px; text-decoration: none; }
+    .topbar .back:hover { text-decoration: underline; }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Load
-// ─────────────────────────────────────────────────────────────────────────────
-function load() {
-  el('am-table').innerHTML = '<div class="loading">Loading incidents…</div>';
-  return kvGet('incidents')
-    .then(function (data) {
-      _incidents = Array.isArray(data) ? data : [];
-      stats();
-      filter();
-    })
-    .catch(function (e) { toast('Error loading incidents: ' + e.message, true); });
-}
+    /* ── Page ── */
+    #am { padding: 24px; }
+    .am-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .am-header h2 { margin: 0; color: #fff; font-size: 20px; font-weight: 500; }
 
-function loadUsers() {
-  return authGet('/authentication/users')
-    .then(function (d) {
-      _users = (d.entry || []).map(function (e) { return e.name; }).sort();
-      populateSel('m-user', _users, '— Unassigned —');
-    }).catch(function () { _users = []; });
-}
+    /* ── Stats ── */
+    .am-stats { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .am-stat { background: #1c1c2e; border: 1px solid #2e2e45; border-radius: 4px; padding: 10px 18px; text-align: center; min-width: 88px; }
+    .am-stat .n { font-size: 26px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .am-stat .l { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
 
-function loadRoles() {
-  var skip = ['can_delete', 'splunk-system-role'];
-  return authGet('/authorization/roles')
-    .then(function (d) {
-      _roles = (d.entry || [])
-        .map(function (e) { return e.name; })
-        .filter(function (n) { return skip.indexOf(n) < 0; })
-        .sort();
-      populateSel('m-role', _roles, '— No Role —');
-    }).catch(function () { _roles = []; });
-}
+    /* ── Filters ── */
+    .am-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+    .am-filters select, .am-filters input[type=text] {
+      padding: 6px 10px; background: #1c1c2e; border: 1px solid #3a3a55;
+      color: #ccc; border-radius: 3px; font-size: 13px;
+    }
+    .am-filters input[type=text] { min-width: 200px; }
 
-function populateSel(id, items, placeholder) {
-  var s = el(id), cur = s.value;
-  s.innerHTML = '<option value="">' + h(placeholder) + '</option>';
-  items.forEach(function (v) {
-    s.innerHTML += '<option value="' + h(v) + '">' + h(v) + '</option>';
-  });
-  s.value = cur;
-}
+    /* ── Table ── */
+    table.am-table { width: 100%; border-collapse: collapse; }
+    .am-table th {
+      background: #1c1c2e; color: #777; padding: 9px 12px; text-align: left;
+      border-bottom: 2px solid #2e2e45; white-space: nowrap; font-weight: 500;
+      text-transform: uppercase; font-size: 10px; letter-spacing: .5px;
+    }
+    .am-table td { padding: 10px 12px; border-bottom: 1px solid #1a1a2e; vertical-align: middle; }
+    .am-table tbody tr:hover { background: rgba(255,255,255,.03); cursor: pointer; }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Stats
-// ─────────────────────────────────────────────────────────────────────────────
-function stats() {
-  var c = { new: 0, assigned: 0, in_progress: 0, on_hold: 0, resolved: 0 };
-  _incidents.forEach(function (i) { if (c[i.status] !== undefined) c[i.status]++; });
-  el('s-total').textContent      = _incidents.length;
-  el('s-new').textContent        = c.new;
-  el('s-assigned').textContent   = c.assigned;
-  el('s-in_progress').textContent = c.in_progress;
-  el('s-on_hold').textContent    = c.on_hold;
-  el('s-resolved').textContent   = c.resolved;
-}
+    /* ── Badges ── */
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+    .sev-critical { background:#7a0000; color:#ffaaaa; }
+    .sev-high     { background:#7a3800; color:#ffcc88; }
+    .sev-medium   { background:#5c4d00; color:#ffe066; }
+    .sev-low      { background:#1a4a1a; color:#88ee88; }
+    .sev-info     { background:#1a2e50; color:#88bbff; }
+    .st-new         { background:#2a2a3a; color:#aaa; }
+    .st-assigned    { background:#1a3050; color:#6fb3f0; }
+    .st-in_progress { background:#1a4a1a; color:#6ff06f; }
+    .st-on_hold     { background:#4a3800; color:#f0c040; }
+    .st-resolved    { background:#1a1a1a; color:#555; }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Filter + Render
-// ─────────────────────────────────────────────────────────────────────────────
-function filter() {
-  var fStatus = val('f-status');
-  var fSev    = val('f-severity');
-  var fSearch = val('f-search').toLowerCase();
+    /* ── Modal overlay ── */
+    .am-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 900; align-items: center; justify-content: center; }
+    .am-overlay.open { display: flex; }
+    .am-modal {
+      background: #1c1c2e; border: 1px solid #3a3a55; border-radius: 6px; padding: 26px;
+      width: 660px; max-width: 96vw; max-height: 88vh; overflow-y: auto;
+      box-shadow: 0 8px 40px rgba(0,0,0,.6);
+    }
+    .am-modal h3 { margin: 0 0 22px; color: #fff; font-size: 16px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+    .modal-close { cursor: pointer; color: #555; font-size: 22px; line-height: 1; }
+    .modal-close:hover { color: #fff; }
 
-  var rows = _incidents.filter(function (i) {
-    if (fStatus && i.status   !== fStatus) return false;
-    if (fSev    && i.severity !== fSev)    return false;
-    if (fSearch &&
-        !(i.title       || '').toLowerCase().includes(fSearch) &&
-        !(i.incident_id || '').toLowerCase().includes(fSearch)) return false;
-    return true;
-  });
+    /* ── Form ── */
+    .fg { margin-bottom: 14px; }
+    .fg label { display: block; color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+    .fg input, .fg select, .fg textarea {
+      width: 100%; padding: 8px 10px; background: #12121f; border: 1px solid #3a3a55;
+      color: #ddd; border-radius: 3px; font-size: 13px;
+    }
+    .fg textarea { resize: vertical; min-height: 72px; }
+    .fg-row { display: flex; gap: 12px; }
+    .fg-row .fg { flex: 1; }
 
-  rows.sort(function (a, b) { return (b.created_time || 0) - (a.created_time || 0); });
-  renderTable(rows);
-}
+    /* ── Buttons ── */
+    .btn { padding: 8px 16px; border: none; border-radius: 3px; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .btn-primary { background: #1a5ca8; color: #fff; }
+    .btn-primary:hover { background: #1f70cc; }
+    .btn-danger  { background: #7a0000; color: #ffaaaa; }
+    .btn-danger:hover  { background: #990000; }
+    .btn-ghost   { background: transparent; color: #888; border: 1px solid #3a3a55; }
+    .btn-ghost:hover { background: #2a2a40; color: #ccc; }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 22px; padding-top: 16px; border-top: 1px solid #2e2e45; }
+    .modal-footer .left { margin-right: auto; }
 
-function renderTable(rows) {
-  if (!rows.length) {
-    el('am-table').innerHTML = '<div class="empty">No incidents found.</div>';
-    return;
-  }
+    /* ── Comments ── */
+    .comments-wrap { margin-top: 22px; border-top: 1px solid #2e2e45; padding-top: 16px; }
+    .comments-wrap h4 { color: #555; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin: 0 0 12px; }
+    .comment { background: #12121f; border: 1px solid #2a2a40; border-radius: 3px; padding: 10px 12px; margin-bottom: 8px; }
+    .comment-meta { font-size: 11px; color: #555; margin-bottom: 4px; }
+    .comment-text { color: #bbb; }
+    .comment-sc   { font-size: 11px; color: #666; font-style: italic; margin-top: 3px; }
+    .add-comment textarea { width: 100%; background: #12121f; border: 1px solid #3a3a55; color: #ddd; padding: 8px 10px; border-radius: 3px; resize: vertical; min-height: 56px; font-size: 13px; margin-bottom: 8px; }
 
-  var html = '<table class="am-table"><thead><tr>' +
-    '<th>Incident</th><th>Title</th><th>Severity</th><th>Status</th>' +
-    '<th>Assigned To</th><th>Source Alert</th><th>Created</th>' +
-    '</tr></thead><tbody>';
+    /* ── Misc ── */
+    .inc-id    { font-family: monospace; color: #6fb3f0; font-weight: 700; font-size: 12px; }
+    .dim       { color: #555; font-size: 11px; }
+    .unassigned { color: #444; font-style: italic; }
+    .loading   { text-align: center; color: #555; padding: 48px; }
+    .empty     { text-align: center; color: #444; padding: 64px; }
 
-  rows.forEach(function (inc) {
-    var assignee = inc.assigned_to
-      ? h(inc.assigned_to)
-      : inc.assigned_role
-        ? '<span style="color:#888">@' + h(inc.assigned_role) + '</span>'
-        : '<span class="unassigned">Unassigned</span>';
+    /* ── Toast ── */
+    #am-toast {
+      position: fixed; bottom: 24px; right: 24px; padding: 11px 20px;
+      border-radius: 4px; font-size: 13px; z-index: 9999; display: none; pointer-events: none;
+    }
+    #am-toast.ok  { background: #1a4a1a; color: #88ee88; border: 1px solid #2a6a2a; display: block; }
+    #am-toast.err { background: #7a0000; color: #ffaaaa; border: 1px solid #990000; display: block; }
+  </style>
+</head>
+<body>
 
-    html += '<tr onclick="AM.openEdit(\'' + js(inc._key) + '\')">' +
-      '<td><span class="inc-id">' + h(inc.incident_id || '—') + '</span></td>' +
-      '<td>' + h(inc.title || '—') + '</td>' +
-      '<td><span class="badge sev-' + h(inc.severity || 'info') + '">' + h(inc.severity || 'info') + '</span></td>' +
-      '<td><span class="badge st-'  + h(inc.status   || 'new')  + '">' + h((inc.status || 'new').replace('_', ' ')) + '</span></td>' +
-      '<td>' + assignee + '</td>' +
-      '<td class="dim">' + h(inc.source_alert || '—') + '</td>' +
-      '<td class="dim">' + fmtTs(inc.created_time) + '</td>' +
-      '</tr>';
-  });
+  <!-- Minimal top bar -->
+  <div class="topbar">
+    <span class="brand">Alert Manager</span>
+    <a class="back" href="/en-US/app/launcher/home">← Splunk Home</a>
+  </div>
 
-  el('am-table').innerHTML = html + '</tbody></table>';
-}
+  <div id="am">
+    <div class="am-header">
+      <h2>Incidents</h2>
+      <button class="btn btn-primary" onclick="AM.openCreate()">+ New Incident</button>
+    </div>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Modal helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function openCreate() {
-  _editMode = false;
-  el('modal-heading').innerHTML = 'New Incident <span class="modal-close" onclick="AM.close()">×</span>';
-  setVal('m-key', ''); setVal('m-inc-id', ''); setVal('m-old-status', '');
-  setVal('m-title', ''); setVal('m-desc', '');
-  setVal('m-sev', 'medium'); setVal('m-status', 'new');
-  setVal('m-user', ''); setVal('m-role', '');
-  el('comments-wrap').style.display = 'none';
-  el('btn-delete').style.display    = 'none';
-  open();
-}
+    <!-- Stats -->
+    <div class="am-stats">
+      <div class="am-stat"><div class="n" id="s-total">—</div><div class="l">Total</div></div>
+      <div class="am-stat"><div class="n" id="s-new"          style="color:#aaa">—</div><div class="l">New</div></div>
+      <div class="am-stat"><div class="n" id="s-assigned"     style="color:#6fb3f0">—</div><div class="l">Assigned</div></div>
+      <div class="am-stat"><div class="n" id="s-in_progress"  style="color:#6ff06f">—</div><div class="l">In Progress</div></div>
+      <div class="am-stat"><div class="n" id="s-on_hold"      style="color:#f0c040">—</div><div class="l">On Hold</div></div>
+      <div class="am-stat"><div class="n" id="s-resolved"     style="color:#555">—</div><div class="l">Resolved</div></div>
+    </div>
 
-function openEdit(key) {
-  var inc = _incidents.find(function (i) { return i._key === key; });
-  if (!inc) return;
-  _editMode = true;
+    <!-- Filters -->
+    <div class="am-filters">
+      <select id="f-status" onchange="AM.filter()">
+        <option value="">All Statuses</option>
+        <option value="new">New</option>
+        <option value="assigned">Assigned</option>
+        <option value="in_progress">In Progress</option>
+        <option value="on_hold">On Hold</option>
+        <option value="resolved">Resolved</option>
+      </select>
+      <select id="f-severity" onchange="AM.filter()">
+        <option value="">All Severities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+        <option value="info">Info</option>
+      </select>
+      <input type="text" id="f-search" placeholder="Search by title or INC…" oninput="AM.filter()">
+      <button class="btn btn-ghost" onclick="AM.load()">↻ Refresh</button>
+    </div>
 
-  el('modal-heading').innerHTML =
-    '<span class="inc-id">' + h(inc.incident_id) + '</span> — Edit ' +
-    '<span class="modal-close" onclick="AM.close()">×</span>';
+    <!-- Table -->
+    <div id="am-table"><div class="loading">Loading incidents…</div></div>
+  </div>
 
-  setVal('m-key',        inc._key        || '');
-  setVal('m-inc-id',     inc.incident_id || '');
-  setVal('m-old-status', inc.status      || 'new');
-  setVal('m-title',      inc.title       || '');
-  setVal('m-desc',       inc.description || '');
-  setVal('m-sev',        inc.severity    || 'medium');
-  setVal('m-status',     inc.status      || 'new');
-  setVal('m-user',       inc.assigned_to   || '');
-  setVal('m-role',       inc.assigned_role || '');
+  <!-- Modal -->
+  <div class="am-overlay" id="am-modal" onclick="AM.overlayClick(event)">
+    <div class="am-modal">
+      <h3 id="modal-heading">
+        New Incident
+        <span class="modal-close" onclick="AM.close()">×</span>
+      </h3>
 
-  el('comments-wrap').style.display = 'block';
-  el('btn-delete').style.display    = 'inline-block';
-  loadComments(inc.incident_id);
-  open();
-}
+      <input type="hidden" id="m-key">
+      <input type="hidden" id="m-inc-id">
+      <input type="hidden" id="m-old-status">
 
-function open()  { el('am-modal').classList.add('open'); }
-function close() { el('am-modal').classList.remove('open'); }
+      <div class="fg">
+        <label>Title *</label>
+        <input type="text" id="m-title" placeholder="Brief description of the incident">
+      </div>
+      <div class="fg">
+        <label>Description</label>
+        <textarea id="m-desc" placeholder="What happened? What is the impact?"></textarea>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Severity</label>
+          <select id="m-sev">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+            <option value="info">Info</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Status</label>
+          <select id="m-status">
+            <option value="new">New</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="on_hold">On Hold</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Assign to User</label>
+          <select id="m-user"><option value="">— Unassigned —</option></select>
+        </div>
+        <div class="fg">
+          <label>Assign to Role</label>
+          <select id="m-role"><option value="">— No Role —</option></select>
+        </div>
+      </div>
 
-function overlayClick(e) { if (e.target === el('am-modal')) close(); }
+      <!-- Comments (edit mode only) -->
+      <div class="comments-wrap" id="comments-wrap" style="display:none">
+        <h4>Activity</h4>
+        <div id="comments-list"></div>
+        <div class="add-comment">
+          <textarea id="new-comment" placeholder="Add a comment…"></textarea>
+          <button class="btn btn-ghost" onclick="AM.addComment()">Add Comment</button>
+        </div>
+      </div>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Comments
-// ─────────────────────────────────────────────────────────────────────────────
-function loadComments(incId) {
-  kvGet('incident_comments', { incident_id: incId })
-    .then(function (data) { renderComments(data || []); })
-    .catch(function ()    { renderComments([]); });
-}
+      <div class="modal-footer">
+        <button class="btn btn-danger left" id="btn-delete" onclick="AM.deleteInc()" style="display:none">Delete</button>
+        <button class="btn btn-ghost" onclick="AM.close()">Cancel</button>
+        <button class="btn btn-primary" onclick="AM.save()">Save</button>
+      </div>
+    </div>
+  </div>
 
-function renderComments(list) {
-  list = list.slice().sort(function (a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
-  var html = '';
-  list.forEach(function (c) {
-    html += '<div class="comment">' +
-      '<div class="comment-meta">' + h(c.author || 'unknown') + ' · ' + fmtTs(c.timestamp) + '</div>' +
-      (c.comment      ? '<div class="comment-text">' + h(c.comment)      + '</div>' : '') +
-      (c.status_change ? '<div class="comment-sc">Status: '  + h(c.status_change) + '</div>' : '') +
-      '</div>';
-  });
-  el('comments-list').innerHTML = html || '<div class="dim" style="margin-bottom:10px">No comments yet.</div>';
-  setVal('new-comment', '');
-}
+  <div id="am-toast"></div>
 
-function addComment() {
-  var incId = val('m-inc-id');
-  var text  = val('new-comment').trim();
-  if (!text || !incId) return;
-  kvPost('incident_comments', {
-    incident_id:   incId,
-    author:        currentUser(),
-    comment:       text,
-    timestamp:     now(),
-    status_change: ''
-  }).then(function () { loadComments(incId); })
-    .catch(function (e) { toast('Failed to add comment: ' + e.message, true); });
-}
+  <script>
+  (function () {
+    'use strict';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Save
-// ─────────────────────────────────────────────────────────────────────────────
-function save() {
-  var title = val('m-title').trim();
-  if (!title) { toast('Title is required', true); return; }
+    var APP    = 'alert_manager';
+    var locale = (location.pathname.match(/^\/([^/]+)/) || ['','en-US'])[1];
+    var KV     = '/' + locale + '/splunkd/__raw/servicesNS/nobody/' + APP + '/storage/collections/data';
+    var AUTH   = '/' + locale + '/splunkd/__raw/services';
 
-  var t         = now();
-  var newStatus = val('m-status');
+    var _incidents = [], _users = [], _roles = [], _editMode = false;
 
-  if (_editMode) {
-    var key       = val('m-key');
-    var incId     = val('m-inc-id');
-    var oldStatus = val('m-old-status');
-    var existing  = _incidents.find(function (i) { return i._key === key; }) || {};
+    // ── CSRF ──────────────────────────────────────────────────────────────────
+    function formKey() {
+      var m = document.cookie.match(/splunkd_form_%2F=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : '';
+    }
 
-    var updated = Object.assign({}, existing, {
-      title:         title,
-      description:   val('m-desc'),
-      severity:      val('m-sev'),
-      status:        newStatus,
-      assigned_to:   val('m-user'),
-      assigned_role: val('m-role'),
-      updated_time:  t,
-      resolved_time: newStatus === 'resolved' ? t : (existing.resolved_time || 0)
-    });
+    // ── HTTP ──────────────────────────────────────────────────────────────────
+    function req(url, opts) {
+      opts = opts || {};
+      var hdrs = Object.assign({ 'X-Splunk-Form-Key': formKey(), 'X-Requested-With': 'XMLHttpRequest' }, opts.headers || {});
+      return fetch(url, Object.assign({}, opts, { headers: hdrs, credentials: 'include' }))
+        .then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { throw new Error(r.status + ': ' + t); });
+          return r.json().catch(function () { return {}; });
+        });
+    }
+    function kvGet(col, query) {
+      var url = KV + '/' + col + '?output_mode=json&count=-1';
+      if (query) url += '&query=' + encodeURIComponent(JSON.stringify(query));
+      return req(url);
+    }
+    function kvPost(col, data, key) {
+      var url = KV + '/' + col + (key ? '/' + encodeURIComponent(key) : '') + '?output_mode=json';
+      return req(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    }
+    function kvDel(col, key) {
+      return req(KV + '/' + col + '/' + encodeURIComponent(key) + '?output_mode=json', { method: 'DELETE' });
+    }
+    function authGet(path) {
+      return req(AUTH + path + '?output_mode=json&count=-1');
+    }
 
-    kvPost('incidents', updated, key)
-      .then(function () {
-        if (oldStatus !== newStatus) {
-          return kvPost('incident_comments', {
-            incident_id:   incId,
-            author:        currentUser(),
-            comment:       '',
-            timestamp:     t,
-            status_change: oldStatus + ' → ' + newStatus
-          });
+    // ── Incident ID ───────────────────────────────────────────────────────────
+    function nextIncId() {
+      return kvGet('incident_counter').then(function (rows) {
+        var n;
+        if (!rows || !rows.length) {
+          n = 1;
+          return kvPost('incident_counter', { _key: 'main', counter: 1 }).then(function () { return pad(n); });
         }
-      })
-      .then(function () { close(); load(); toast('Incident updated'); })
-      .catch(function (e) { toast('Save failed: ' + e.message, true); });
-
-  } else {
-    nextIncId().then(function (incId) {
-      return kvPost('incidents', {
-        incident_id:   incId,
-        title:         title,
-        description:   val('m-desc'),
-        severity:      val('m-sev'),
-        status:        'new',
-        assigned_to:   val('m-user'),
-        assigned_role: val('m-role'),
-        created_by:    currentUser(),
-        source_alert:  '',
-        created_time:  t,
-        updated_time:  t,
-        resolved_time: 0
+        n = (parseInt(rows[0].counter, 10) || 0) + 1;
+        return kvPost('incident_counter', { counter: n }, 'main').then(function () { return pad(n); });
       });
-    })
-    .then(function () { close(); load(); toast('Incident created'); })
-    .catch(function (e) { toast('Create failed: ' + e.message, true); });
-  }
-}
+    }
+    function pad(n) { return 'INC-' + String(n).padStart(3, '0'); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Delete
-// ─────────────────────────────────────────────────────────────────────────────
-function deleteInc() {
-  var key   = val('m-key');
-  var incId = val('m-inc-id');
-  if (!confirm('Delete ' + incId + '? This cannot be undone.')) return;
-  kvDel('incidents', key)
-    .then(function () { close(); load(); toast(incId + ' deleted'); })
-    .catch(function (e) { toast('Delete failed: ' + e.message, true); });
-}
+    // ── Load ──────────────────────────────────────────────────────────────────
+    function load() {
+      el('am-table').innerHTML = '<div class="loading">Loading incidents…</div>';
+      return kvGet('incidents')
+        .then(function (data) { _incidents = Array.isArray(data) ? data : []; stats(); filter(); })
+        .catch(function (e)   { toast('Error loading: ' + e.message, true); });
+    }
+    function loadUsers() {
+      return authGet('/authentication/users')
+        .then(function (d) { _users = (d.entry || []).map(function (e) { return e.name; }).sort(); fillSel('m-user', _users, '— Unassigned —'); })
+        .catch(function () { _users = []; });
+    }
+    function loadRoles() {
+      var skip = ['can_delete', 'splunk-system-role'];
+      return authGet('/authorization/roles')
+        .then(function (d) {
+          _roles = (d.entry || []).map(function (e) { return e.name; }).filter(function (n) { return skip.indexOf(n) < 0; }).sort();
+          fillSel('m-role', _roles, '— No Role —');
+        }).catch(function () { _roles = []; });
+    }
+    function fillSel(id, items, ph) {
+      var s = el(id), cur = s.value;
+      s.innerHTML = '<option value="">' + h(ph) + '</option>';
+      items.forEach(function (v) { s.innerHTML += '<option value="' + h(v) + '">' + h(v) + '</option>'; });
+      s.value = cur;
+    }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function el(id)       { return document.getElementById(id); }
-function val(id)      { return el(id).value; }
-function setVal(id,v) { el(id).value = v; }
-function now()        { return Math.floor(Date.now() / 1000); }
+    // ── Stats ─────────────────────────────────────────────────────────────────
+    function stats() {
+      var c = { new: 0, assigned: 0, in_progress: 0, on_hold: 0, resolved: 0 };
+      _incidents.forEach(function (i) { if (c[i.status] !== undefined) c[i.status]++; });
+      el('s-total').textContent       = _incidents.length;
+      el('s-new').textContent         = c.new;
+      el('s-assigned').textContent    = c.assigned;
+      el('s-in_progress').textContent = c.in_progress;
+      el('s-on_hold').textContent     = c.on_hold;
+      el('s-resolved').textContent    = c.resolved;
+    }
 
-function h(s) {
-  return String(s || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function js(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+    // ── Filter + Render ───────────────────────────────────────────────────────
+    function filter() {
+      var fs = val('f-status'), fv = val('f-severity'), ft = val('f-search').toLowerCase();
+      var rows = _incidents.filter(function (i) {
+        if (fs && i.status   !== fs) return false;
+        if (fv && i.severity !== fv) return false;
+        if (ft && !(i.title || '').toLowerCase().includes(ft) && !(i.incident_id || '').toLowerCase().includes(ft)) return false;
+        return true;
+      });
+      rows.sort(function (a, b) { return (b.created_time || 0) - (a.created_time || 0); });
+      renderTable(rows);
+    }
+    function renderTable(rows) {
+      if (!rows.length) { el('am-table').innerHTML = '<div class="empty">No incidents found.</div>'; return; }
+      var html = '<table class="am-table"><thead><tr><th>Incident</th><th>Title</th><th>Severity</th><th>Status</th><th>Assigned To</th><th>Source Alert</th><th>Created</th></tr></thead><tbody>';
+      rows.forEach(function (i) {
+        var assignee = i.assigned_to ? h(i.assigned_to) : i.assigned_role ? '<span style="color:#888">@' + h(i.assigned_role) + '</span>' : '<span class="unassigned">Unassigned</span>';
+        html += '<tr onclick="AM.openEdit(\'' + js(i._key) + '\')">' +
+          '<td><span class="inc-id">' + h(i.incident_id || '—') + '</span></td>' +
+          '<td>' + h(i.title || '—') + '</td>' +
+          '<td><span class="badge sev-' + h(i.severity || 'info') + '">' + h(i.severity || 'info') + '</span></td>' +
+          '<td><span class="badge st-'  + h(i.status   || 'new')  + '">' + h((i.status || 'new').replace('_',' ')) + '</span></td>' +
+          '<td>' + assignee + '</td>' +
+          '<td class="dim">' + h(i.source_alert || '—') + '</td>' +
+          '<td class="dim">' + fmtTs(i.created_time) + '</td>' +
+          '</tr>';
+      });
+      el('am-table').innerHTML = html + '</tbody></table>';
+    }
 
-function fmtTs(epoch) {
-  if (!epoch) return '—';
-  return new Date(epoch * 1000).toLocaleString();
-}
+    // ── Modal ─────────────────────────────────────────────────────────────────
+    function openCreate() {
+      _editMode = false;
+      el('modal-heading').innerHTML = 'New Incident <span class="modal-close" onclick="AM.close()">×</span>';
+      ['m-key','m-inc-id','m-old-status','m-title','m-desc'].forEach(function(id){ setVal(id,''); });
+      setVal('m-sev','medium'); setVal('m-status','new'); setVal('m-user',''); setVal('m-role','');
+      el('comments-wrap').style.display = 'none';
+      el('btn-delete').style.display    = 'none';
+      el('am-modal').classList.add('open');
+    }
+    function openEdit(key) {
+      var i = _incidents.find(function (x) { return x._key === key; });
+      if (!i) return;
+      _editMode = true;
+      el('modal-heading').innerHTML = '<span class="inc-id">' + h(i.incident_id) + '</span> — Edit <span class="modal-close" onclick="AM.close()">×</span>';
+      setVal('m-key',        i._key          || '');
+      setVal('m-inc-id',     i.incident_id   || '');
+      setVal('m-old-status', i.status        || 'new');
+      setVal('m-title',      i.title         || '');
+      setVal('m-desc',       i.description   || '');
+      setVal('m-sev',        i.severity      || 'medium');
+      setVal('m-status',     i.status        || 'new');
+      setVal('m-user',       i.assigned_to   || '');
+      setVal('m-role',       i.assigned_role || '');
+      el('comments-wrap').style.display = 'block';
+      el('btn-delete').style.display    = 'inline-block';
+      loadComments(i.incident_id);
+      el('am-modal').classList.add('open');
+    }
+    function close()           { el('am-modal').classList.remove('open'); }
+    function overlayClick(e)   { if (e.target === el('am-modal')) close(); }
 
-function currentUser() {
-  try { return window.$C && $C.USERNAME || 'unknown'; } catch(e) { return 'unknown'; }
-}
+    // ── Comments ──────────────────────────────────────────────────────────────
+    function loadComments(incId) {
+      kvGet('incident_comments', { incident_id: incId })
+        .then(function (d) { renderComments(d || []); })
+        .catch(function ()  { renderComments([]); });
+    }
+    function renderComments(list) {
+      list = list.slice().sort(function (a, b) { return (a.timestamp || 0) - (b.timestamp || 0); });
+      var html = '';
+      list.forEach(function (c) {
+        html += '<div class="comment"><div class="comment-meta">' + h(c.author || 'unknown') + ' · ' + fmtTs(c.timestamp) + '</div>' +
+          (c.comment      ? '<div class="comment-text">' + h(c.comment) + '</div>' : '') +
+          (c.status_change ? '<div class="comment-sc">Status: ' + h(c.status_change) + '</div>' : '') +
+          '</div>';
+      });
+      el('comments-list').innerHTML = html || '<div class="dim" style="margin-bottom:10px">No comments yet.</div>';
+      setVal('new-comment', '');
+    }
+    function addComment() {
+      var incId = val('m-inc-id'), text = val('new-comment').trim();
+      if (!text || !incId) return;
+      kvPost('incident_comments', { incident_id: incId, author: currentUser(), comment: text, timestamp: now(), status_change: '' })
+        .then(function () { loadComments(incId); })
+        .catch(function (e) { toast('Comment failed: ' + e.message, true); });
+    }
 
-var _toastTimer;
-function toast(msg, isErr) {
-  var t = el('am-toast');
-  t.textContent = msg;
-  t.className   = isErr ? 'err' : 'ok';
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(function () { t.className = ''; }, 3500);
-}
+    // ── Save ──────────────────────────────────────────────────────────────────
+    function save() {
+      var title = val('m-title').trim();
+      if (!title) { toast('Title is required', true); return; }
+      var t = now(), newStatus = val('m-status');
+      if (_editMode) {
+        var key = val('m-key'), incId = val('m-inc-id'), oldStatus = val('m-old-status');
+        var existing = _incidents.find(function (x) { return x._key === key; }) || {};
+        var updated  = Object.assign({}, existing, {
+          title: title, description: val('m-desc'), severity: val('m-sev'),
+          status: newStatus, assigned_to: val('m-user'), assigned_role: val('m-role'),
+          updated_time: t, resolved_time: newStatus === 'resolved' ? t : (existing.resolved_time || 0)
+        });
+        kvPost('incidents', updated, key)
+          .then(function () {
+            if (oldStatus !== newStatus)
+              return kvPost('incident_comments', { incident_id: incId, author: currentUser(), comment: '', timestamp: t, status_change: oldStatus + ' → ' + newStatus });
+          })
+          .then(function () { close(); load(); toast('Incident updated'); })
+          .catch(function (e) { toast('Save failed: ' + e.message, true); });
+      } else {
+        nextIncId()
+          .then(function (incId) {
+            return kvPost('incidents', {
+              incident_id: incId, title: title, description: val('m-desc'),
+              severity: val('m-sev'), status: 'new', assigned_to: val('m-user'),
+              assigned_role: val('m-role'), created_by: currentUser(), source_alert: '',
+              created_time: t, updated_time: t, resolved_time: 0
+            });
+          })
+          .then(function () { close(); load(); toast('Incident created'); })
+          .catch(function (e) { toast('Create failed: ' + e.message, true); });
+      }
+    }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Public API
-// ─────────────────────────────────────────────────────────────────────────────
-window.AM = {
-  load:        load,
-  filter:      filter,
-  openCreate:  openCreate,
-  openEdit:    openEdit,
-  close:       close,
-  overlayClick: overlayClick,
-  save:        save,
-  deleteInc:   deleteInc,
-  addComment:  addComment
-};
+    // ── Delete ────────────────────────────────────────────────────────────────
+    function deleteInc() {
+      var key = val('m-key'), incId = val('m-inc-id');
+      if (!confirm('Delete ' + incId + '? This cannot be undone.')) return;
+      kvDel('incidents', key)
+        .then(function () { close(); load(); toast(incId + ' deleted'); })
+        .catch(function (e) { toast('Delete failed: ' + e.message, true); });
+    }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Init
-// ─────────────────────────────────────────────────────────────────────────────
-Promise.all([load(), loadUsers(), loadRoles()]);
+    // ── Utils ─────────────────────────────────────────────────────────────────
+    function el(id)       { return document.getElementById(id); }
+    function val(id)      { return el(id).value; }
+    function setVal(id,v) { el(id).value = v; }
+    function now()        { return Math.floor(Date.now() / 1000); }
+    function h(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function js(s)        { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+    function fmtTs(ep)    { return ep ? new Date(ep * 1000).toLocaleString() : '—'; }
+    function currentUser(){ try { return (window.$C && $C.USERNAME) || 'unknown'; } catch(e) { return 'unknown'; } }
 
-}());
-</script>
-</%block>
+    var _tt;
+    function toast(msg, isErr) {
+      var t = el('am-toast');
+      t.textContent = msg; t.className = isErr ? 'err' : 'ok';
+      clearTimeout(_tt); _tt = setTimeout(function () { t.className = ''; }, 3500);
+    }
+
+    window.AM = { load: load, filter: filter, openCreate: openCreate, openEdit: openEdit, close: close, overlayClick: overlayClick, save: save, deleteInc: deleteInc, addComment: addComment };
+
+    Promise.all([load(), loadUsers(), loadRoles()]);
+  }());
+  </script>
+</body>
+</html>
