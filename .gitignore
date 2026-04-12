@@ -1,0 +1,12 @@
+# Splunk local configs — instance-specific, never version-controlled
+**/local/
+**/metadata/local.meta
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
