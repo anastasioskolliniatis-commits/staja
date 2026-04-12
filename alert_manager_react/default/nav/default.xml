@@ -1,0 +1,4 @@
+<nav search_view="search" color="#1a1a2e">
+  <view name="incidents" default="true" label="Incidents"/>
+  <view name="search" label="Search"/>
+</nav>
