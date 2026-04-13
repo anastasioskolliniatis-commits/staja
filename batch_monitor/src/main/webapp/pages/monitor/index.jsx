@@ -10,19 +10,7 @@ function mount(container) {
   );
 }
 
-function waitAndMount() {
-  const el = document.getElementById('root');
-  if (el) { mount(el); return; }
-
-  const observer = new MutationObserver(() => {
-    const found = document.getElementById('root');
-    if (found) { observer.disconnect(); mount(found); }
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', waitAndMount);
-} else {
-  waitAndMount();
+const el = document.getElementById('root');
+if (el) {
+  mount(el);
 }
