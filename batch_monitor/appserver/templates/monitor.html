@@ -1,13 +1,17 @@
-<%inherit file="//html/base.html" />
-<%block name="title">Batch Monitor</%block>
-
-<%block name="css">
-<style>
-  #root { min-height: calc(100vh - 60px); }
-</style>
-</%block>
-
-<%block name="content">
-<div id="root"></div>
-<script src="${make_url('/static/app/batch_monitor/pages/monitor.js')}"></script>
-</%block>
+<%! app_name = "batch_monitor" %><!DOCTYPE html>
+<html lang="">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <title>Batch Monitor</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>* { box-sizing: border-box; } body { margin: 0; padding: 0; }</style>
+    </head>
+    <body>
+        <script src="${make_url('/config?autoload=1')}" crossorigin="use-credentials"></script>
+        <script src="${make_url('/static/js/i18n.js')}"></script>
+        <script src="${make_url('/i18ncatalog?autoload=1')}"></script>
+        <div id="root" style="min-height:700px;"></div>
+        <script src="${make_url('/static/app/' + app_name + '/pages/monitor.js')}"></script>
+    </body>
+</html>
