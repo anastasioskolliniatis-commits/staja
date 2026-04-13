@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(git --version)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(winget --version)",
+      "Bash(where node:*)",
+      "Bash(winget install:*)",
+      "Read(//c/Program Files/nodejs/**)",
+      "Read(//c/Users/42070/AppData/Roaming/**)",
+      "Read(//c/Program Files/nodejs//**)",
+      "Bash(\"/c/Program Files/nodejs/npm\" install)",
+      "WebFetch(domain:dev.splunk.com)",
+      "WebFetch(domain:www.npmjs.com)"
+    ]
+  }
+}
