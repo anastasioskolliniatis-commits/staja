@@ -1,9 +1,9 @@
-<dashboard version="1.1">
+<dashboard version="1.1" script="pages/monitor.js">
   <label>Batch Monitor</label>
   <row>
     <panel>
       <html>
-        <iframe src="/static/app/batch_monitor/monitor.html" style="width:100%;height:700px;border:none;" frameborder="0"></iframe>
+        <div id="root" style="min-height:700px;"></div>
       </html>
     </panel>
   </row>

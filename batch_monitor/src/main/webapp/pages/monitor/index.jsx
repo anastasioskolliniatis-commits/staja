@@ -1,16 +1,28 @@
 import { createRoot } from 'react-dom/client';
+import { SplunkThemeProvider } from '@splunk/themes';
 import App from './App';
 
 function mount(container) {
-  createRoot(container).render(<App />);
+  createRoot(container).render(
+    <SplunkThemeProvider family="enterprise" colorScheme="dark">
+      <App />
+    </SplunkThemeProvider>
+  );
 }
 
-const el = document.getElementById('root');
-if (el) {
-  mount(el);
-} else {
-  document.addEventListener('DOMContentLoaded', () => {
+function waitAndMount() {
+  const el = document.getElementById('root');
+  if (el) { mount(el); return; }
+
+  const observer = new MutationObserver(() => {
     const found = document.getElementById('root');
-    if (found) mount(found);
+    if (found) { observer.disconnect(); mount(found); }
   });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', waitAndMount);
+} else {
+  waitAndMount();
 }
