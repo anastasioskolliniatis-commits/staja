@@ -5,13 +5,14 @@
         <meta http-equiv="x-ua-compatible" content="ie=edge" />
         <title>Batch Monitor</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>* { box-sizing: border-box; } body { margin: 0; padding: 0; }</style>
     </head>
     <body>
         <script src="${make_url('/config?autoload=1')}" crossorigin="use-credentials"></script>
         <script src="${make_url('/static/js/i18n.js')}"></script>
         <script src="${make_url('/i18ncatalog?autoload=1')}"></script>
-        <div id="root" style="min-height:700px;"></div>
+        <script>
+            __splunkd_partials__ = ${json_decode(splunkd)};
+        </script>
         <script src="${make_url('/static/app/' + app_name + '/pages/monitor.js')}"></script>
     </body>
 </html>

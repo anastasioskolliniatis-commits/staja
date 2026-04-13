@@ -1,16 +1,12 @@
-import { createRoot } from 'react-dom/client';
+import layout from '@splunk/react-page';
 import { SplunkThemeProvider } from '@splunk/themes';
+import { defaultTheme, getThemeOptions } from '@splunk/splunk-utils/themes';
 import App from './App';
 
-function mount(container) {
-  createRoot(container).render(
-    <SplunkThemeProvider family="enterprise" colorScheme="dark">
-      <App />
-    </SplunkThemeProvider>
-  );
-}
+const themeProviderSettings = getThemeOptions(defaultTheme() || 'enterprise');
 
-const el = document.getElementById('root');
-if (el) {
-  mount(el);
-}
+layout(
+  <SplunkThemeProvider {...themeProviderSettings}>
+    <App />
+  </SplunkThemeProvider>
+);
