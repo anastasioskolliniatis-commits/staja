@@ -1,0 +1,10 @@
+<dashboard script="build/incidents.js">
+  <label>Incidents</label>
+  <row>
+    <panel>
+      <html>
+        <div id="root" style="min-height:600px"></div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

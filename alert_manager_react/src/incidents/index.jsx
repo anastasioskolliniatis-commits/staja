@@ -2,9 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { SplunkThemeProvider } from '@splunk/themes';
 import App from './App';
 
-function mount() {
-  const container = document.getElementById('root');
-  if (!container) return;
+function mount(container) {
   createRoot(container).render(
     <SplunkThemeProvider family="enterprise" colorScheme="dark">
       <App />
@@ -12,8 +10,21 @@ function mount() {
   );
 }
 
+// Splunk renders <html> panel content AFTER the script loads via require.js,
+// so #root may not exist yet. Use a MutationObserver to wait for it.
+function waitAndMount() {
+  const el = document.getElementById('root');
+  if (el) { mount(el); return; }
+
+  const observer = new MutationObserver(() => {
+    const found = document.getElementById('root');
+    if (found) { observer.disconnect(); mount(found); }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount);
+  document.addEventListener('DOMContentLoaded', waitAndMount);
 } else {
-  mount();
+  waitAndMount();
 }

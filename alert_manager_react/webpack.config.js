@@ -5,6 +5,7 @@ module.exports = (env, argv) => ({
   output: {
     path: path.resolve(__dirname, 'appserver/static/build'),
     filename: 'incidents.js',
+    library: { type: 'umd' },
     clean: true,
   },
   resolve: {
