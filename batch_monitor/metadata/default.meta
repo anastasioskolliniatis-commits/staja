@@ -8,15 +8,20 @@ export = system
 
 [transforms/bm_tree_config]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
 
 [transforms/bm_services]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
 
 [transforms/bm_mappings]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
 
 [transforms/bm_results]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
 
 [transforms/bm_run_log]
 access = read : [ * ], write : [ admin, sc_admin ]
+export = system
