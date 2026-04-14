@@ -5,3 +5,15 @@ export = system
 [views]
 access = read : [ * ], write : [ admin, power ]
 export = system
+
+[transforms/bm_tree_config]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[transforms/bm_services]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[transforms/bm_mappings]
+access = read : [ * ], write : [ admin, sc_admin ]
+
+[transforms/bm_results]
+access = read : [ * ], write : [ admin, sc_admin ]
