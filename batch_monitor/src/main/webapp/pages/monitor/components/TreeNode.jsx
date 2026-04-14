@@ -2,9 +2,12 @@ import { useState } from 'react';
 
 const STATUS_COLOR = {
   ok:       '#00aa44',
-  warning:  '#e69900',
+  warning:  '#cc7700',
   critical: '#cc0000',
-  unknown:  '#666666',
+  error:    '#9900cc',
+  no_data:  '#445566',
+  stale:    '#334455',
+  unknown:  '#444444',
 };
 
 const S = {

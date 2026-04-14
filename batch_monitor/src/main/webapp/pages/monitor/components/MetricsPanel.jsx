@@ -2,23 +2,26 @@ import { useState } from 'react';
 
 const STATUS_COLOR = {
   ok:       '#00aa44',
-  warning:  '#e69900',
+  warning:  '#cc7700',
   critical: '#cc0000',
-  unknown:  '#666666',
+  error:    '#9900cc',
+  no_data:  '#445566',
+  stale:    '#334455',
+  unknown:  '#555555',
 };
 
-// ── Tab bar ─────────────────────────────────────────────────────────────────
+// ── Tab bar ──────────────────────────────────────────────────────────────────
 function TabBar({ tabs, activeTab, onSelect, onClose }) {
   return (
     <div style={{
-      display: 'flex',
-      background: '#3c3c5c',
-      borderBottom: '1px solid #555',
-      flexShrink: 0,
-      overflowX: 'auto',
+      display:       'flex',
+      background:    '#252535',
+      borderBottom:  '1px solid #3a3a5a',
+      flexShrink:    0,
+      overflowX:     'auto',
     }}>
       {tabs.length === 0 && (
-        <div style={{ padding: '6px 14px', color: '#888', fontSize: '11px' }}>Metrics</div>
+        <div style={{ padding: '7px 14px', color: '#555', fontSize: '11px' }}>Metrics</div>
       )}
       {tabs.map(tab => {
         const active = tab.id === activeTab;
@@ -27,35 +30,36 @@ function TabBar({ tabs, activeTab, onSelect, onClose }) {
             key={tab.id}
             onClick={() => onSelect(tab.id)}
             style={{
-              display: 'flex',
+              display:    'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '5px 12px',
-              cursor: 'pointer',
-              background: active ? '#5c5c8a' : 'transparent',
-              color: active ? '#ffffff' : '#aaaacc',
-              borderRight: '1px solid #555',
-              fontSize: '11px',
+              gap:        '6px',
+              padding:    '6px 12px',
+              cursor:     'pointer',
+              background: active ? '#3a3a5c' : 'transparent',
+              color:      active ? '#ffffff' : '#8888aa',
+              borderRight: '1px solid #3a3a5a',
+              borderBottom: active ? '2px solid #5599ff' : '2px solid transparent',
+              fontSize:   '11px',
               whiteSpace: 'nowrap',
               userSelect: 'none',
             }}
           >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '2px',
+            {/* Status dot — spinner if loading */}
+            {tab._loading ? (
+              <span style={{ fontSize: '10px', color: '#888' }}>&#8987;</span>
+            ) : (
+              <span style={{
+                width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0,
                 background: STATUS_COLOR[tab.status] || STATUS_COLOR.unknown,
-                flexShrink: 0,
-              }}
-            />
+              }} />
+            )}
             {tab.label}
             <span
               onClick={e => { e.stopPropagation(); onClose(tab.id); }}
-              style={{ color: '#888', marginLeft: '4px', fontSize: '13px', lineHeight: 1 }}
+              style={{ color: '#555', marginLeft: '4px', fontSize: '14px', lineHeight: 1 }}
               title="Close"
             >
-              ×
+              &times;
             </span>
           </div>
         );
@@ -64,18 +68,22 @@ function TabBar({ tabs, activeTab, onSelect, onClose }) {
   );
 }
 
-// ── Results table ────────────────────────────────────────────────────────────
+// ── Results table ─────────────────────────────────────────────────────────────
 function ResultsTable({ columns, rows }) {
   const tdBase = {
-    padding: '5px 10px',
-    borderBottom: '1px solid #e0e0e0',
-    color: '#222',
-    fontSize: '12px',
-    whiteSpace: 'nowrap',
+    padding:       '5px 10px',
+    borderBottom:  '1px solid #e8e8e8',
+    color:         '#222',
+    fontSize:      '12px',
+    whiteSpace:    'nowrap',
   };
 
   if (!columns || columns.length === 0) {
-    return <div style={{ color: '#999', padding: '20px', fontSize: '12px' }}>No columns defined.</div>;
+    return (
+      <div style={{ color: '#999', padding: '24px', fontSize: '12px' }}>
+        No columns defined.
+      </div>
+    );
   }
 
   return (
@@ -85,15 +93,15 @@ function ResultsTable({ columns, rows }) {
           {columns.map(col => (
             <th key={col} style={{
               ...tdBase,
-              background: '#e8e8e8',
-              color: '#444',
-              fontWeight: '600',
-              textTransform: 'uppercase',
-              fontSize: '10px',
-              letterSpacing: '0.5px',
-              borderBottom: '2px solid #ccc',
-              position: 'sticky',
-              top: 0,
+              background:     '#eaeaea',
+              color:          '#444',
+              fontWeight:     '600',
+              textTransform:  'uppercase',
+              fontSize:       '10px',
+              letterSpacing:  '0.5px',
+              borderBottom:   '2px solid #ccc',
+              position:       'sticky',
+              top:            0,
             }}>
               {col}
             </th>
@@ -103,29 +111,49 @@ function ResultsTable({ columns, rows }) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={columns.length} style={{ ...tdBase, color: '#999', textAlign: 'center', padding: '24px' }}>
-              No data to display.
+            <td colSpan={columns.length} style={{ ...tdBase, color: '#aaa', textAlign: 'center', padding: '32px' }}>
+              No data returned.
             </td>
           </tr>
-        ) : (
-          rows.map((row, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f7f7f7' }}>
-              {columns.map(col => (
-                <td key={col} style={tdBase}>{row[col] ?? ''}</td>
-              ))}
-            </tr>
-          ))
-        )}
+        ) : rows.map((row, i) => (
+          <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f7f7f7' }}>
+            {columns.map(col => {
+              const val = row[col] ?? '';
+              // Colour service_status values inline
+              const isStatus = col === 'service_status';
+              return (
+                <td key={col} style={tdBase}>
+                  {isStatus ? (
+                    <span style={{
+                      display:      'inline-block',
+                      padding:      '1px 7px',
+                      borderRadius: '3px',
+                      fontSize:     '10px',
+                      fontWeight:   '700',
+                      background:   STATUS_COLOR[String(val).toLowerCase()] || '#888',
+                      color:        '#fff',
+                    }}>
+                      {String(val).toUpperCase()}
+                    </span>
+                  ) : String(val)}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
       </tbody>
     </table>
   );
 }
 
-// ── Main MetricsPanel ────────────────────────────────────────────────────────
-export default function MetricsPanel({ openTabs, activeTab, activeNode, onSelectTab, onCloseTab }) {
+// ── Main MetricsPanel ─────────────────────────────────────────────────────────
+export default function MetricsPanel({
+  openTabs, activeTab, activeNode,
+  onSelectTab, onCloseTab, onRefreshTab,
+}) {
   const [search, setSearch] = useState('');
 
-  const filteredRows = activeNode
+  const filteredRows = activeNode && !activeNode._loading
     ? (activeNode.rows || []).filter(row =>
         !search || Object.values(row).some(v =>
           String(v).toLowerCase().includes(search.toLowerCase())
@@ -135,6 +163,7 @@ export default function MetricsPanel({ openTabs, activeTab, activeNode, onSelect
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f4f4f4' }}>
+
       {/* Tab bar */}
       <TabBar
         tabs={openTabs}
@@ -143,101 +172,147 @@ export default function MetricsPanel({ openTabs, activeTab, activeNode, onSelect
         onClose={onCloseTab}
       />
 
-      {/* Content */}
-      {!activeNode ? (
+      {/* Empty state */}
+      {!activeNode && (
         <div style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#999',
-          flexDirection: 'column',
-          gap: '8px',
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#999', flexDirection: 'column', gap: '8px',
         }}>
-          <span style={{ fontSize: '32px' }}>◈</span>
-          <span style={{ fontSize: '13px' }}>Select a query from the State Tree</span>
+          <span style={{ fontSize: '32px' }}>&#9672;</span>
+          <span style={{ fontSize: '13px' }}>Select a node from the State Tree</span>
         </div>
-      ) : (
+      )}
+
+      {/* Active node */}
+      {activeNode && (
         <>
           {/* Title bar */}
           <div style={{
-            background: '#4a4a6a',
-            color: '#ffffff',
-            padding: '6px 12px',
-            fontSize: '11px',
-            borderBottom: '1px solid #555',
-            flexShrink: 0,
+            background:   '#3a3a5a',
+            color:        '#ffffff',
+            padding:      '7px 12px',
+            fontSize:     '11px',
+            borderBottom: '1px solid #2a2a4a',
+            flexShrink:   0,
+            display:      'flex',
+            alignItems:   'center',
+            justifyContent: 'space-between',
           }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
               <span style={{
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                borderRadius: '2px',
+                display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px',
                 background: STATUS_COLOR[activeNode.status] || STATUS_COLOR.unknown,
-                marginRight: '6px',
               }} />
               {activeNode.label}
+              {activeNode._svcName && (
+                <span style={{ color: '#8888cc', fontWeight: '400', fontSize: '10px' }}>
+                  &nbsp;·&nbsp;{activeNode._svcName}
+                </span>
+              )}
             </div>
+
+            {/* Refresh button for live nodes */}
+            {activeNode._live && (
+              <button
+                onClick={() => onRefreshTab(activeNode.id)}
+                disabled={activeNode._loading}
+                title="Re-run search"
+                style={{
+                  background: 'none', border: '1px solid #5555aa',
+                  borderRadius: '3px', color: activeNode._loading ? '#555' : '#aaa',
+                  cursor: activeNode._loading ? 'default' : 'pointer',
+                  padding: '2px 8px', fontSize: '11px',
+                }}
+              >
+                &#x21BB; Refresh
+              </button>
+            )}
           </div>
 
-          {/* Description + sampling info */}
+          {/* Description + search bar */}
           <div style={{
-            background: '#ebebf5',
+            background:   '#ebebf5',
             borderBottom: '1px solid #d0d0e0',
-            padding: '6px 12px',
-            flexShrink: 0,
+            padding:      '6px 12px',
+            flexShrink:   0,
           }}>
             <div style={{ color: '#333', marginBottom: '4px', fontSize: '12px' }}>
               {activeNode.description}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#666', fontSize: '11px' }}>
-                ⟳&nbsp; {activeNode.sampleInfo}
+              <div style={{ color: '#888', fontSize: '11px' }}>
+                &#x21BB;&nbsp;{activeNode.sampleInfo || (activeNode._loading ? 'Running search\u2026' : '')}
               </div>
-              {/* Search */}
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search…"
-                style={{
-                  padding: '3px 8px',
-                  fontSize: '11px',
-                  border: '1px solid #bbb',
-                  borderRadius: '3px',
-                  background: '#fff',
-                  color: '#333',
-                  outline: 'none',
-                  width: '160px',
-                }}
-              />
+              {!activeNode._loading && (
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Filter rows\u2026"
+                  style={{
+                    padding: '3px 8px', fontSize: '11px',
+                    border: '1px solid #bbb', borderRadius: '3px',
+                    background: '#fff', color: '#333', outline: 'none', width: '160px',
+                  }}
+                />
+              )}
             </div>
           </div>
 
-          {/* Table */}
-          <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff' }}>
-            <ResultsTable columns={activeNode.columns} rows={filteredRows} />
-          </div>
+          {/* Loading spinner */}
+          {activeNode._loading && (
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column', gap: '12px', background: '#fff', color: '#888',
+            }}>
+              <span style={{ fontSize: '24px' }}>&#8987;</span>
+              <span style={{ fontSize: '12px' }}>Running search&hellip;</span>
+            </div>
+          )}
+
+          {/* Error state */}
+          {!activeNode._loading && activeNode._error && (
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column', gap: '10px', background: '#fff',
+            }}>
+              <div style={{ color: '#cc4444', fontSize: '12px', maxWidth: '480px', textAlign: 'center' }}>
+                Search failed: {activeNode._error}
+              </div>
+              <button
+                onClick={() => onRefreshTab(activeNode.id)}
+                style={{ padding: '5px 14px', fontSize: '11px', background: '#eee', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Results table */}
+          {!activeNode._loading && !activeNode._error && (
+            <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff' }}>
+              <ResultsTable columns={activeNode.columns} rows={filteredRows} />
+            </div>
+          )}
 
           {/* Status bar */}
-          <div style={{
-            background: activeNode.status === 'critical' ? '#cc0000'
-              : activeNode.status === 'warning' ? '#e69900'
-              : '#2ecc71',
-            color: activeNode.status === 'ok' ? '#1a5c34' : '#ffffff',
-            padding: '4px 12px',
-            fontSize: '11px',
-            fontWeight: '600',
-            flexShrink: 0,
-            display: 'flex',
-            gap: '16px',
-          }}>
-            <span>samplingStatus&nbsp;
-              <strong>{activeNode.status.toUpperCase()}</strong>
-            </span>
-            <span>rows&nbsp;<strong>{filteredRows.length}</strong></span>
-          </div>
+          {!activeNode._loading && !activeNode._error && (
+            <div style={{
+              background: STATUS_COLOR[activeNode.status] ?? '#888',
+              color:      activeNode.status === 'ok' ? '#1a5c34' : '#ffffff',
+              padding:    '4px 12px',
+              fontSize:   '11px',
+              fontWeight: '600',
+              flexShrink: 0,
+              display:    'flex',
+              gap:        '20px',
+            }}>
+              <span>
+                status&nbsp;<strong>{(activeNode.status || 'unknown').toUpperCase()}</strong>
+              </span>
+              <span>rows&nbsp;<strong>{filteredRows.length}</strong></span>
+            </div>
+          )}
         </>
       )}
     </div>
