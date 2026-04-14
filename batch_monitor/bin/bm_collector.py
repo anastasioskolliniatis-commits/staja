@@ -370,51 +370,73 @@ def _fetch_results(session_key, sid, count=1):
     return resp.get("results", [])
 
 
-def run_service_check(session_key, node_id, service_name, spl):
+def run_service_check(session_key, node_id, service_name, spl, status_field="service_status"):
     """
     Execute a service SPL check for one (node, service) pair.
-    Returns dict: { service_status, error_message }
+    Returns dict: { service_status, error_message, row_count }
+
+    The SPL is expected to return multiple rows — one per monitored job/item.
+    Each row must contain the status_field (default: service_status).
+    The aggregate status = worst across ALL rows (critical > warning > ok).
 
     Validates:
       - Search job must reach DONE state
-      - Results must contain the 'service_status' field
-      - service_status value must be in VALID_STATUSES
+      - At least one result row must contain the status_field
+      - status_field values must be in VALID_STATUSES (invalid values → warning)
     """
+    # Status severity order — higher = worse
+    SEVERITY = {"ok": 0, "warning": 1, "critical": 2}
+
     t0 = time.time()
     try:
         sid = _submit_search(session_key, spl)
         log.debug(f"action=search_submitted sid={sid} node_id={node_id} service_name={service_name}")
 
         _poll_search(session_key, sid)
-        rows = _fetch_results(session_key, sid, count=1)
+        # Fetch all rows — we aggregate worst status across the full result set
+        rows = _fetch_results(session_key, sid, count=10000)
 
         if not rows:
             log.warning(
                 f"action=no_data node_id={node_id} service_name={service_name} "
                 f"duration_sec={time.time()-t0:.2f}"
             )
-            return {"service_status": "no_data", "error_message": ""}
+            return {"service_status": "no_data", "error_message": "", "row_count": 0}
 
-        row = rows[0]
-
-        if "service_status" not in row:
+        # Validate that at least the first row has the status field
+        if status_field not in rows[0]:
             raise RuntimeError(
-                f"required field 'service_status' missing — "
-                f"got fields: {list(row.keys())}"
+                f"required field '{status_field}' missing — "
+                f"got fields: {list(rows[0].keys())}"
             )
 
-        raw = row["service_status"].strip().lower()
-        if raw not in VALID_STATUSES:
-            raise RuntimeError(
-                f"invalid service_status value \"{raw}\" — "
-                f"expected one of {sorted(VALID_STATUSES)}"
+        # Aggregate: worst status across all rows
+        worst       = "ok"
+        worst_sev   = 0
+        invalid_vals = []
+
+        for row in rows:
+            raw = str(row.get(status_field, "")).strip().lower()
+            if raw not in VALID_STATUSES:
+                invalid_vals.append(raw)
+                continue
+            sev = SEVERITY.get(raw, 0)
+            if sev > worst_sev:
+                worst     = raw
+                worst_sev = sev
+
+        if invalid_vals:
+            log.warning(
+                f"action=invalid_status_values node_id={node_id} "
+                f"service_name={service_name} values={invalid_vals[:5]}"
             )
 
         log.info(
             f"action=check_ok node_id={node_id} service_name={service_name} "
-            f"service_status={raw} duration_sec={time.time()-t0:.2f}"
+            f"service_status={worst} row_count={len(rows)} "
+            f"duration_sec={time.time()-t0:.2f}"
         )
-        return {"service_status": raw, "error_message": ""}
+        return {"service_status": worst, "error_message": "", "row_count": len(rows)}
 
     except RuntimeError as exc:
         msg = str(exc)[:500]
@@ -488,12 +510,13 @@ def resolve_leaf_nodes(session_key, tree_spl):
         log.critical(f"action=tree_spl_failed error=\"{e}\"")
         sys.exit(1)
 
-    leaf_nodes = {}
+    # Leaf nodes = rows that have node_id set.
+    # node_host is no longer used by the collector — SPL substitution uses $node_id$.
+    leaf_nodes = set()
     for row in rows:
-        node_id   = row.get("node_id",   "").strip()
-        node_host = row.get("node_host", "").strip()
-        if node_id and node_host:
-            leaf_nodes[node_id] = node_host
+        node_id = row.get("node_id", "").strip()
+        if node_id:
+            leaf_nodes.add(node_id)
 
     log.info(f"action=tree_resolved total_rows={len(rows)} leaf_count={len(leaf_nodes)}")
     return leaf_nodes
@@ -503,13 +526,14 @@ def resolve_leaf_nodes(session_key, tree_spl):
 
 def build_work_queue(leaf_nodes, services, mappings):
     """
-    Produce a list of (node_id, node_host, service_name, resolved_spl) tuples.
+    Produce a list of (node_id, service_name, resolved_spl, status_field) tuples.
+
+    The SPL template may optionally use $node_id$ as a substitution token.
+    Most service SPLs are self-contained (SQL query groups covering all jobs).
 
     Skips:
       - Mappings where node_id is not in leaf_nodes (group nodes — by design)
       - Mappings referencing an unknown service (config error — log WARNING)
-
-    Warns if service_spl does not contain $node_host$ token.
     """
     queue   = []
     skipped = 0
@@ -531,17 +555,14 @@ def build_work_queue(leaf_nodes, services, mappings):
             skipped += 1
             continue
 
-        node_host    = leaf_nodes[node_id]
-        service_spl  = services[service_name]["service_spl"]
+        svc          = services[service_name]
+        service_spl  = svc["service_spl"]
+        status_field = svc.get("status_field", "").strip() or "service_status"
 
-        if "$node_host$" not in service_spl:
-            log.warning(
-                f"action=no_host_token service_name={service_name} node_id={node_id} "
-                f"note=\"$node_host$ not found in service_spl — may be intentional\""
-            )
+        # Optional $node_id$ substitution — useful when one SPL covers multiple nodes
+        resolved_spl = service_spl.replace("$node_id$", node_id)
 
-        resolved_spl = service_spl.replace("$node_host$", node_host)
-        queue.append((node_id, node_host, service_name, resolved_spl))
+        queue.append((node_id, service_name, resolved_spl, status_field))
 
     log.info(f"action=queue_built total={len(queue)} skipped={skipped}")
     return queue
@@ -564,8 +585,8 @@ def run_collector(session_key, work_queue, run_id):
     error_count   = 0
     now_epoch     = str(int(time.time()))
 
-    for node_id, node_host, service_name, spl in work_queue:
-        outcome = run_service_check(session_key, node_id, service_name, spl)
+    for node_id, service_name, spl, status_field in work_queue:
+        outcome = run_service_check(session_key, node_id, service_name, spl, status_field)
 
         if outcome["service_status"] == "error":
             error_count += 1
@@ -581,6 +602,7 @@ def run_collector(session_key, work_queue, run_id):
             "last_checked_time": now_epoch,
             "run_id":            run_id,
             "error_message":     outcome["error_message"],
+            "row_count":         str(outcome.get("row_count", 0)),
         })
 
     return results, success_count, error_count
