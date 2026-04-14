@@ -17,3 +17,6 @@ access = read : [ * ], write : [ admin, sc_admin ]
 
 [transforms/bm_results]
 access = read : [ * ], write : [ admin, sc_admin ]
+
+[transforms/bm_run_log]
+access = read : [ * ], write : [ admin, sc_admin ]
