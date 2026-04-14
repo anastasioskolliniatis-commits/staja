@@ -11,30 +11,24 @@
 const SEARCH_BASE =
   '/en-US/splunkd/__raw/servicesNS/nobody/batch_monitor/search/jobs';
 
-const GET_HEADERS = { 'X-Requested-With': 'XMLHttpRequest' };
-
 /**
- * Read the Splunk CSRF token from the browser cookie.
- * Required as X-Splunk-Form-Key on all POST requests through the web proxy.
+ * Get the Splunk session key from __splunkd_partials__ (injected by Mako template).
+ * Using Authorization: Splunk {key} bypasses cookie auth and CSRF validation.
  */
-function getSplunkCSRFToken() {
+function getSessionKey() {
   try {
-    for (const part of document.cookie.split(';')) {
-      const [name, value] = part.trim().split('=');
-      if (name && name.startsWith('splunkweb_csrf_token_')) {
-        return decodeURIComponent(value ?? '');
-      }
-    }
-  } catch { /* non-browser env */ }
-  return null;
+    return window.__splunkd_partials__?.__rawSessionKey ?? null;
+  } catch {
+    return null;
+  }
 }
 
-function postHeaders(contentType = 'application/x-www-form-urlencoded') {
-  const csrf = getSplunkCSRFToken();
+function mkHeaders(contentType = null) {
+  const key = getSessionKey();
   return {
-    ...GET_HEADERS,
-    'Content-Type': contentType,
-    ...(csrf ? { 'X-Splunk-Form-Key': csrf } : {}),
+    'X-Requested-With': 'XMLHttpRequest',
+    ...(key  ? { 'Authorization': `Splunk ${key}` } : {}),
+    ...(contentType ? { 'Content-Type': contentType } : {}),
   };
 }
 
@@ -58,7 +52,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   // 1 — Submit job
   const submitResp = await fetch(SEARCH_BASE, {
     method:      'POST',
-    headers:     postHeaders(),
+    headers:     mkHeaders('application/x-www-form-urlencoded'),
     credentials: 'include',
     body: new URLSearchParams({
       search:                searchStr,
@@ -84,7 +78,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
     await delay(POLL_INTERVAL_MS);
 
     const pollResp = await fetch(`${jobUrl}?output_mode=json`, {
-      headers:     GET_HEADERS,
+      headers:     mkHeaders(),
       credentials: 'include',
     });
     if (!pollResp.ok) throw new Error(`Poll failed (HTTP ${pollResp.status})`);
@@ -105,7 +99,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
     // Cancel the orphaned job — best effort
     fetch(`${jobUrl}/control`, {
       method:      'POST',
-      headers:     postHeaders(),
+      headers:     mkHeaders('application/x-www-form-urlencoded'),
       credentials: 'include',
       body:        'action=cancel',
     }).catch(() => {});
@@ -115,7 +109,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   // 3 — Fetch results
   const resResp = await fetch(
     `${jobUrl}/results?output_mode=json&count=${count}`,
-    { headers: GET_HEADERS, credentials: 'include' }
+    { headers: mkHeaders(), credentials: 'include' }
   );
   if (!resResp.ok) throw new Error(`Results fetch failed (HTTP ${resResp.status})`);
 
