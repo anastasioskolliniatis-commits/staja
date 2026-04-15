@@ -2,35 +2,17 @@
  * useSplunkSearch.js — run a one-shot Splunk search from the browser.
  *
  * Uses the Splunk REST proxy (/en-US/splunkd/__raw/) so the browser session
- * cookie handles auth — no separate token management needed.
+ * cookie handles auth. CSRF is handled automatically by defaultFetchInit from
+ * @splunk/splunk-utils/fetch which reads the splunkweb_csrf_token cookie.
  *
  * Exported as a plain async function (not a React hook) so it can be called
  * imperatively from event handlers and other async contexts.
  */
 
+import { defaultFetchInit } from '@splunk/splunk-utils/fetch';
+
 const SEARCH_BASE =
   '/en-US/splunkd/__raw/servicesNS/nobody/batch_monitor/search/jobs';
-
-/**
- * Get the Splunk session key from __splunkd_partials__ (injected by Mako template).
- * Using Authorization: Splunk {key} bypasses cookie auth and CSRF validation.
- */
-function getSessionKey() {
-  try {
-    return window.__splunkd_partials__?.__rawSessionKey ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function mkHeaders(contentType = null) {
-  const key = getSessionKey();
-  return {
-    'X-Requested-With': 'XMLHttpRequest',
-    ...(key  ? { 'Authorization': `Splunk ${key}` } : {}),
-    ...(contentType ? { 'Content-Type': contentType } : {}),
-  };
-}
 
 const POLL_INTERVAL_MS  = 1000;
 const TIMEOUT_MS        = 60_000;
@@ -51,9 +33,12 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
 
   // 1 — Submit job
   const submitResp = await fetch(SEARCH_BASE, {
-    method:      'POST',
-    headers:     mkHeaders('application/x-www-form-urlencoded'),
-    credentials: 'include',
+    ...defaultFetchInit,
+    method:  'POST',
+    headers: {
+      ...defaultFetchInit.headers,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
     body: new URLSearchParams({
       search:                searchStr,
       output_mode:           'json',
@@ -78,8 +63,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
     await delay(POLL_INTERVAL_MS);
 
     const pollResp = await fetch(`${jobUrl}?output_mode=json`, {
-      headers:     mkHeaders(),
-      credentials: 'include',
+      ...defaultFetchInit,
     });
     if (!pollResp.ok) throw new Error(`Poll failed (HTTP ${pollResp.status})`);
 
@@ -98,10 +82,13 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   if (Date.now() >= deadline) {
     // Cancel the orphaned job — best effort
     fetch(`${jobUrl}/control`, {
-      method:      'POST',
-      headers:     mkHeaders('application/x-www-form-urlencoded'),
-      credentials: 'include',
-      body:        'action=cancel',
+      ...defaultFetchInit,
+      method:  'POST',
+      headers: {
+        ...defaultFetchInit.headers,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'action=cancel',
     }).catch(() => {});
     throw new Error(`Search timed out after ${timeoutMs / 1000}s`);
   }
@@ -109,7 +96,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   // 3 — Fetch results
   const resResp = await fetch(
     `${jobUrl}/results?output_mode=json&count=${count}`,
-    { headers: mkHeaders(), credentials: 'include' }
+    { ...defaultFetchInit }
   );
   if (!resResp.ok) throw new Error(`Results fetch failed (HTTP ${resResp.status})`);
 
