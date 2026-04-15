@@ -51,20 +51,31 @@ export async function kvGetOne(collection, key) {
 }
 
 export async function kvUpsert(collection, key, doc) {
-  const resp = await fetch(
+  const body = JSON.stringify({ ...doc, _key: key });
+  const hdrs = mkHeaders({ 'Content-Type': 'application/json' });
+
+  // Try update first (POST /{collection}/{key} only works if document exists)
+  const updateResp = await fetch(
     `${KV_BASE}/${collection}/${encodeURIComponent(key)}?output_mode=json`,
-    {
-      method:      'POST',
-      headers:     mkHeaders({ 'Content-Type': 'application/json' }),
-      credentials: 'include',
-      body:        JSON.stringify({ ...doc, _key: key }),
-    }
+    { method: 'POST', headers: hdrs, credentials: 'include', body }
   );
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`KV upsert failed [${collection}/${key}] HTTP ${resp.status}: ${text.slice(0, 200)}`);
+  if (updateResp.ok) return updateResp.json();
+
+  // Document doesn't exist yet — create it (POST /{collection} with _key in body)
+  if (updateResp.status === 404) {
+    const createResp = await fetch(
+      `${KV_BASE}/${collection}?output_mode=json`,
+      { method: 'POST', headers: hdrs, credentials: 'include', body }
+    );
+    if (!createResp.ok) {
+      const text = await createResp.text();
+      throw new Error(`KV create failed [${collection}/${key}] HTTP ${createResp.status}: ${text.slice(0, 200)}`);
+    }
+    return createResp.json();
   }
-  return resp.json();
+
+  const text = await updateResp.text();
+  throw new Error(`KV upsert failed [${collection}/${key}] HTTP ${updateResp.status}: ${text.slice(0, 200)}`);
 }
 
 export async function kvDelete(collection, key) {
