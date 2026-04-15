@@ -2,14 +2,14 @@
  * useSplunkSearch.js — run a one-shot Splunk search from the browser.
  *
  * Uses the Splunk REST proxy (/en-US/splunkd/__raw/) so the browser session
- * cookie handles auth. CSRF is handled automatically by defaultFetchInit from
+ * cookie handles auth. CSRF is handled automatically by getDefaultFetchInit() from
  * @splunk/splunk-utils/fetch which reads the splunkweb_csrf_token cookie.
  *
  * Exported as a plain async function (not a React hook) so it can be called
  * imperatively from event handlers and other async contexts.
  */
 
-import { defaultFetchInit } from '@splunk/splunk-utils/fetch';
+import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 
 const SEARCH_BASE =
   '/en-US/splunkd/__raw/servicesNS/nobody/batch_monitor/search/jobs';
@@ -33,10 +33,10 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
 
   // 1 — Submit job
   const submitResp = await fetch(SEARCH_BASE, {
-    ...defaultFetchInit,
+    ...getDefaultFetchInit(),
     method:  'POST',
     headers: {
-      ...defaultFetchInit.headers,
+      ...getDefaultFetchInit().headers,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
@@ -63,7 +63,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
     await delay(POLL_INTERVAL_MS);
 
     const pollResp = await fetch(`${jobUrl}?output_mode=json`, {
-      ...defaultFetchInit,
+      ...getDefaultFetchInit(),
     });
     if (!pollResp.ok) throw new Error(`Poll failed (HTTP ${pollResp.status})`);
 
@@ -82,10 +82,10 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   if (Date.now() >= deadline) {
     // Cancel the orphaned job — best effort
     fetch(`${jobUrl}/control`, {
-      ...defaultFetchInit,
+      ...getDefaultFetchInit(),
       method:  'POST',
       headers: {
-        ...defaultFetchInit.headers,
+        ...getDefaultFetchInit().headers,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: 'action=cancel',
@@ -96,7 +96,7 @@ export async function runSearch(spl, { count = 10_000, timeoutMs = TIMEOUT_MS } 
   // 3 — Fetch results
   const resResp = await fetch(
     `${jobUrl}/results?output_mode=json&count=${count}`,
-    { ...defaultFetchInit }
+    { ...getDefaultFetchInit() }
   );
   if (!resResp.ok) throw new Error(`Results fetch failed (HTTP ${resResp.status})`);
 

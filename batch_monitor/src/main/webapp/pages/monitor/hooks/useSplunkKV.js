@@ -1,7 +1,7 @@
 /**
  * useSplunkKV.js — KV Store REST helpers for Batch Monitor
  *
- * Auth strategy: use @splunk/splunk-utils/fetch defaultFetchInit which
+ * Auth strategy: use @splunk/splunk-utils/fetch getDefaultFetchInit() which
  * correctly reads the CSRF token from the splunkweb_csrf_token_{port} cookie
  * and sets X-Splunk-Form-Key. This is the supported approach for Splunk
  * React apps and handles CSRF validation reliably.
@@ -10,7 +10,7 @@
  * authenticated users regardless of their own Splunk username context.
  */
 
-import { defaultFetchInit } from '@splunk/splunk-utils/fetch';
+import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 
 const KV_BASE =
   '/en-US/splunkd/__raw/servicesNS/nobody/batch_monitor/storage/collections/data';
@@ -25,7 +25,7 @@ const KV_BASE =
 export async function kvGetAll(collection) {
   const resp = await fetch(
     `${KV_BASE}/${collection}?output_mode=json&limit=10000`,
-    { ...defaultFetchInit }
+    { ...getDefaultFetchInit() }
   );
   if (!resp.ok) {
     const text = await resp.text();
@@ -45,7 +45,7 @@ export async function kvGetAll(collection) {
 export async function kvGetOne(collection, key) {
   const resp = await fetch(
     `${KV_BASE}/${collection}/${encodeURIComponent(key)}?output_mode=json`,
-    { ...defaultFetchInit }
+    { ...getDefaultFetchInit() }
   );
   if (resp.status === 404) return null;
   if (!resp.ok) {
@@ -63,9 +63,9 @@ export async function kvUpsert(collection, key, doc) {
   const resp = await fetch(
     `${KV_BASE}/${collection}/${encodeURIComponent(key)}?output_mode=json`,
     {
-      ...defaultFetchInit,
+      ...getDefaultFetchInit(),
       method:  'POST',
-      headers: { ...defaultFetchInit.headers, 'Content-Type': 'application/json' },
+      headers: { ...getDefaultFetchInit().headers, 'Content-Type': 'application/json' },
       body:    JSON.stringify({ ...doc, _key: key }),
     }
   );
@@ -86,7 +86,7 @@ export async function kvDelete(collection, key) {
   const resp = await fetch(
     `${KV_BASE}/${collection}/${encodeURIComponent(key)}?output_mode=json`,
     {
-      ...defaultFetchInit,
+      ...getDefaultFetchInit(),
       method: 'DELETE',
     }
   );
