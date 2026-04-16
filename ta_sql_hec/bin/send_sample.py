@@ -30,7 +30,7 @@ import urllib.error
 import ssl
 from datetime import datetime, timedelta
 
-DEFAULT_HEC_URL = "https://172.21.48.147:8088"
+DEFAULT_HEC_URL = "http://172.21.48.147:8088"
 DEFAULT_TOKEN   = "fe0f27da-49f6-4979-be67-6f5baed94159"
 DEFAULT_CSV     = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                "..", "sampledata", "lalaland.csv")
