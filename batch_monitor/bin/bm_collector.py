@@ -215,10 +215,20 @@ def kv_get_all(session_key, collection):
 def kv_upsert(session_key, collection, key, doc):
     """
     Insert or replace a single KV document identified by _key.
+    POST to /{collection}/{key} updates; falls back to POST /{collection} to create.
     Raises on failure — used for run lock where failure is critical.
     """
-    url = f"{KV_BASE}/{collection}/{urllib.parse.quote(key, safe='')}"
-    _splunk_request(session_key, "POST", url, data=doc, content_type="application/json")
+    doc = dict(doc)
+    doc["_key"] = key
+    update_url = f"{KV_BASE}/{collection}/{urllib.parse.quote(key, safe='')}"
+    try:
+        _splunk_request(session_key, "POST", update_url, data=doc, content_type="application/json")
+    except RuntimeError as exc:
+        if "404" in str(exc):
+            create_url = f"{KV_BASE}/{collection}"
+            _splunk_request(session_key, "POST", create_url, data=doc, content_type="application/json")
+        else:
+            raise
 
 
 def kv_batch_save(session_key, collection, docs):
