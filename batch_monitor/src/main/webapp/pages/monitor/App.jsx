@@ -9,7 +9,8 @@ import { useMonitorData }  from './hooks/useMonitorData';
 import { kvGetAll }        from './hooks/useSplunkKV';
 import { runSearch }       from './hooks/useSplunkSearch';
 
-const RESULTS_REFRESH_MS = 60_000;
+const RESULTS_REFRESH_MS  = 60_000;
+const PANEL_REFRESH_MS    = 60_000; // auto-refresh selected leaf SPL every 60s
 
 export default function App() {
   const { isAdmin } = useCurrentUser();
@@ -108,6 +109,29 @@ export default function App() {
       });
     }
   }, [mappings, services]);
+
+  // Auto-refresh the selected leaf panel every PANEL_REFRESH_MS
+  useEffect(() => {
+    if (!selectedNode?._live) return;
+    const timer = setInterval(() => {
+      // Only refresh if not already loading
+      setSelectedNode(prev => {
+        if (prev?._live && !prev._loading) {
+          // Trigger refresh by setting _loading — actual search fires in handleRefresh
+          return { ...prev, _needsRefresh: (prev._needsRefresh || 0) + 1 };
+        }
+        return prev;
+      });
+    }, PANEL_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [selectedNode?._live, selectedNode?.id]);
+
+  // Watch _needsRefresh counter and fire the search
+  useEffect(() => {
+    if (!selectedNode?._needsRefresh) return;
+    handleRefresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNode?._needsRefresh]);
 
   // Re-run the SPL for the currently selected leaf
   const handleRefresh = useCallback(async () => {

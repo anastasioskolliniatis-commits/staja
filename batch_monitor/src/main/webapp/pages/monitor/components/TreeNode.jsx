@@ -52,10 +52,11 @@ export default function TreeNode({ node, depth, selectedId, onSelect }) {
   const [expanded, setExpanded] = useState(depth <= 2);
 
   const handleClick = () => {
-    if (isQuery) {
-      onSelect(node);
-    } else if (hasChildren) {
-      setExpanded(e => !e);
+    // Always notify parent — groups show children summary, leaves show SPL results
+    onSelect(node);
+    // Auto-expand group when selected (but don't collapse — use triangle for that)
+    if (hasChildren && !expanded) {
+      setExpanded(true);
     }
   };
 
@@ -68,8 +69,11 @@ export default function TreeNode({ node, depth, selectedId, onSelect }) {
         onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
         title={node.label}
       >
-        {/* Expand / collapse triangle */}
-        <span style={S.toggle}>
+        {/* Expand / collapse triangle — separate click so it doesn't also select */}
+        <span
+          style={S.toggle}
+          onClick={e => { e.stopPropagation(); if (hasChildren) setExpanded(x => !x); }}
+        >
           {hasChildren ? (expanded ? '▼' : '▶') : ''}
         </span>
 
