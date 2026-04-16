@@ -31,6 +31,8 @@ import json
 import time
 import uuid
 import logging
+import argparse
+import getpass
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -81,12 +83,30 @@ _SSL_CTX.verify_mode = ssl.CERT_NONE
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
-def read_session_key():
+def read_session_key(user=None, password=None):
     """
-    Read the Splunk session key from stdin.
-    Splunk writes 'sessionKey=XXXX' when passAuth=splunk-system-user is set.
-    Must be called before any API request.
+    Get a Splunk session key.
+    - Normal (scripted input): read 'sessionKey=XXXX' from stdin.
+    - Manual run: use --user / --password to login via REST and get a key.
     """
+    # Manual mode: credentials provided on command line
+    if user and password:
+        try:
+            url  = f"{SPLUNK_BASE_URL}/services/auth/login"
+            body = urllib.parse.urlencode(
+                {"username": user, "password": password, "output_mode": "json"}
+            ).encode()
+            req = urllib.request.Request(url, data=body, method="POST")
+            with urllib.request.urlopen(req, context=_SSL_CTX, timeout=30) as resp:
+                data = json.loads(resp.read())
+                key  = data["sessionKey"]
+            log.info("action=auth_ok mode=manual")
+            return key
+        except Exception as e:
+            log.critical(f"action=auth_failed mode=manual error=\"{e}\"")
+            sys.exit(1)
+
+    # Scripted input mode: Splunk writes sessionKey=XXXX to stdin
     try:
         line = sys.stdin.readline().strip()
         if not line:
@@ -97,7 +117,7 @@ def read_session_key():
             key = line
         if not key:
             raise ValueError("session key value is empty")
-        log.info("action=auth_ok")
+        log.info("action=auth_ok mode=scripted")
         return key
     except Exception as e:
         log.critical(f"action=auth_failed error=\"{e}\"")
@@ -611,12 +631,20 @@ def run_collector(session_key, work_queue, run_id):
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 def main():
+    parser = argparse.ArgumentParser(description="bm_collector — manual run mode")
+    parser.add_argument("--user",     default=None, help="Splunk username (manual run)")
+    parser.add_argument("--password", default=None, help="Splunk password (manual run)")
+    args, _ = parser.parse_known_args()
+
+    if args.user and not args.password:
+        args.password = getpass.getpass(f"Password for {args.user}: ")
+
     run_id     = str(uuid.uuid4())[:8]
     run_start  = time.time()
 
     log.info(f"action=run_start run_id={run_id}")
 
-    session_key = read_session_key()
+    session_key = read_session_key(user=args.user, password=args.password)
 
     if not acquire_run_lock(session_key, run_id):
         sys.exit(0)  # Another run is active — exit cleanly, not an error
