@@ -19,7 +19,8 @@ export default function StateTree({ tree, loading, selectedId, onSelect, onReloa
         justifyContent:'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ color: '#5599ff' }}>&#9672;</span> State Tree
+          <span style={{ color: '#5599ff', fontSize: '9px', letterSpacing: '1px' }}>▶▶</span>
+          <span style={{ letterSpacing: '0.6px' }}>STATE TREE</span>
         </div>
         <button
           onClick={onReload}
