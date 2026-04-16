@@ -218,7 +218,7 @@ def kv_upsert(session_key, collection, key, doc):
     Raises on failure — used for run lock where failure is critical.
     """
     url = f"{KV_BASE}/{collection}/{urllib.parse.quote(key, safe='')}"
-    _splunk_request(session_key, "POST", url, data=doc)
+    _splunk_request(session_key, "POST", url, data=doc, content_type="application/json")
 
 
 def kv_batch_save(session_key, collection, docs):
