@@ -269,11 +269,11 @@ def kv_batch_save(session_key, collection, docs):
 
 # ─── Run lock ─────────────────────────────────────────────────────────────────
 
-def acquire_run_lock(session_key, run_id):
+def acquire_run_lock(session_key, run_id, force=False):
     """
     Write a 'running' lock document to bm_run_log.
     Returns True if lock acquired, False if another run is active.
-    Overrides zombie runs older than MAX_RUN_AGE_SEC.
+    Overrides zombie runs older than MAX_RUN_AGE_SEC, or any lock when force=True.
     """
     try:
         docs = kv_get_all(session_key, "bm_run_log")
@@ -281,16 +281,22 @@ def acquire_run_lock(session_key, run_id):
             if doc.get("_key") == RUN_LOCK_KEY and doc.get("run_status") == "running":
                 started = float(doc.get("run_start_time", 0))
                 age_sec = time.time() - started
-                if age_sec < MAX_RUN_AGE_SEC:
+                if force:
+                    log.warning(
+                        f"action=lock_forced age_sec={age_sec:.0f} "
+                        f"existing_run_id={doc.get('run_id','?')}"
+                    )
+                elif age_sec < MAX_RUN_AGE_SEC:
                     log.warning(
                         f"action=run_skipped reason=lock_held "
                         f"age_sec={age_sec:.0f} existing_run_id={doc.get('run_id','?')}"
                     )
                     return False
-                log.warning(
-                    f"action=zombie_overridden age_sec={age_sec:.0f} "
-                    f"existing_run_id={doc.get('run_id','?')}"
-                )
+                else:
+                    log.warning(
+                        f"action=zombie_overridden age_sec={age_sec:.0f} "
+                        f"existing_run_id={doc.get('run_id','?')}"
+                    )
     except Exception as e:
         log.warning(f"action=lock_check_failed error=\"{e}\" proceeding=true")
 
@@ -644,6 +650,7 @@ def main():
     parser = argparse.ArgumentParser(description="bm_collector — manual run mode")
     parser.add_argument("--user",     default=None, help="Splunk username (manual run)")
     parser.add_argument("--password", default=None, help="Splunk password (manual run)")
+    parser.add_argument("--force",    action="store_true", help="Override any existing run lock")
     args, _ = parser.parse_known_args()
 
     if args.user and not args.password:
@@ -656,7 +663,7 @@ def main():
 
     session_key = read_session_key(user=args.user, password=args.password)
 
-    if not acquire_run_lock(session_key, run_id):
+    if not acquire_run_lock(session_key, run_id, force=args.force):
         sys.exit(0)  # Another run is active — exit cleanly, not an error
 
     try:
