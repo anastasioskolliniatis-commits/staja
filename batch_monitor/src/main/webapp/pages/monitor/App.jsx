@@ -14,13 +14,11 @@ const RESULTS_REFRESH_MS = 60_000;
 export default function App() {
   const { isAdmin } = useCurrentUser();
 
-  // Top-level navigation
   const [appTab, setAppTab] = useState('monitor');
 
-  // Live tree + config (services, mappings)
   const { tree, services, mappings, loading: treeLoading, reload: reloadTree } = useMonitorData();
 
-  // Shared bm_results — refreshed every 60s for the Services tab
+  // Shared bm_results — refreshed every 60s
   const [results,      setResults]      = useState([]);
   const [resultsError, setResultsError] = useState(null);
 
@@ -36,141 +34,106 @@ export default function App() {
     return () => clearInterval(timer);
   }, [fetchResults]);
 
-  // Monitor panel — open tabs (one per clicked node)
-  const [openTabs,  setOpenTabs]  = useState([]);
-  const [activeTab, setActiveTab] = useState(null);
+  // Single selected node — replaces the old openTabs/activeTab stack
+  const [selectedNode, setSelectedNode] = useState(null);
 
   const handleSelect = useCallback(async (node) => {
-    // If tab already open — just activate it
-    const existing = openTabs.find(t => t.id === node.id);
-    if (existing) {
-      setActiveTab(node.id);
-      return;
-    }
+    if (node.type === 'query') {
+      // ── Leaf node with a service mapping ──────────────────────────────────
+      const mapping = mappings.find(m => m.node_id === node.id);
+      const svc     = mapping ? services.get(mapping.service_name) : null;
 
-    // Build the tab object — start with what we know
-    const tab = {
-      id:          node.id,
-      label:       node.label,
-      status:      node.status,
-      type:        node.type,
-      // For live nodes these will be populated after the search
-      _live:       false,
-      _loading:    false,
-      _error:      null,
-      columns:     node.columns   ?? [],
-      rows:        node.rows      ?? [],
-      description: node.description ?? node.label,
-      sampleInfo:  '',
-    };
-
-    // Find first service mapped to this node
-    const mapping = mappings.find(m => m.node_id === node.id);
-    if (mapping) {
-      const svc = services.get(mapping.service_name);
-      if (svc?.service_spl) {
-        tab._live    = true;
-        tab._loading = true;
-        tab._svcName = svc.service_name;
-
-        // Parse display_fields
-        let displayFields = [];
+      let displayFields = [];
+      if (svc?.display_fields) {
         try {
-          const raw = svc.display_fields;
-          displayFields = Array.isArray(raw)
-            ? raw
-            : raw ? JSON.parse(raw) : [];
+          displayFields = Array.isArray(svc.display_fields)
+            ? svc.display_fields
+            : JSON.parse(svc.display_fields);
         } catch { displayFields = []; }
-
-        tab._displayFields = displayFields;
-        tab.description    = svc.service_description || node.label;
       }
-    }
 
-    // Open the tab immediately (shows loading state if live)
-    setOpenTabs(prev => [...prev, tab]);
-    setActiveTab(node.id);
+      const base = {
+        id:          node.id,
+        label:       node.label,
+        status:      node.status,
+        type:        'query',
+        _live:       !!svc?.service_spl,
+        _loading:    !!svc?.service_spl,
+        _error:      null,
+        _svcName:    svc?.service_name ?? '',
+        _displayFields: displayFields,
+        description: svc?.service_description || node.label,
+        columns:     [],
+        rows:        [],
+        sampleInfo:  '',
+      };
 
-    // Fire the live search if needed
-    if (tab._live && tab._loading) {
-      const svc = services.get(mapping.service_name);
+      setSelectedNode(base);
+
+      if (!svc?.service_spl) return;
+
       try {
         const t0   = Date.now();
         const rows = await runSearch(svc.service_spl, { count: 10_000 });
-        const cols = tab._displayFields.length
-          ? tab._displayFields
+        const cols = displayFields.length
+          ? displayFields
           : rows.length > 0
             ? Object.keys(rows[0]).filter(k => !k.startsWith('_'))
             : [];
-
         const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 
-        setOpenTabs(prev => prev.map(t =>
-          t.id !== node.id ? t : {
-            ...t,
-            _loading:   false,
-            columns:    cols,
-            rows,
-            sampleInfo: `${rows.length} row${rows.length !== 1 ? 's' : ''} · fetched in ${elapsed}s`,
-          }
-        ));
+        setSelectedNode(prev =>
+          prev?.id === node.id
+            ? { ...prev, _loading: false, columns: cols, rows,
+                sampleInfo: `${rows.length} row${rows.length !== 1 ? 's' : ''} · ${elapsed}s` }
+            : prev
+        );
       } catch (e) {
-        setOpenTabs(prev => prev.map(t =>
-          t.id !== node.id ? t : {
-            ...t,
-            _loading: false,
-            _error:   e.message,
-            columns:  [],
-            rows:     [],
-            sampleInfo: 'Search failed',
-          }
-        ));
+        setSelectedNode(prev =>
+          prev?.id === node.id
+            ? { ...prev, _loading: false, _error: e.message, sampleInfo: 'Search failed' }
+            : prev
+        );
       }
+
+    } else {
+      // ── Group node — show children summary ────────────────────────────────
+      setSelectedNode({
+        id:          node.id,
+        label:       node.label,
+        status:      node.status,
+        type:        'group',
+        children:    node.children || [],
+        description: `${(node.children || []).length} item${node.children?.length !== 1 ? 's' : ''}`,
+      });
     }
-  }, [openTabs, mappings, services]);
+  }, [mappings, services]);
 
-  const handleCloseTab = useCallback((id) => {
-    const remaining = openTabs.filter(t => t.id !== id);
-    setOpenTabs(remaining);
-    if (activeTab === id) {
-      setActiveTab(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
-    }
-  }, [openTabs, activeTab]);
+  // Re-run the SPL for the currently selected leaf
+  const handleRefresh = useCallback(async () => {
+    if (!selectedNode?._live || selectedNode._loading) return;
 
-  // Refresh active tab's search results
-  const handleRefreshTab = useCallback(async (tabId) => {
-    const tab = openTabs.find(t => t.id === tabId);
-    if (!tab?._live) return;
-
-    const mapping = mappings.find(m => m.node_id === tabId);
-    if (!mapping) return;
-    const svc = services.get(mapping.service_name);
+    const mapping = mappings.find(m => m.node_id === selectedNode.id);
+    const svc     = mapping ? services.get(mapping.service_name) : null;
     if (!svc?.service_spl) return;
 
-    setOpenTabs(prev => prev.map(t =>
-      t.id !== tabId ? t : { ...t, _loading: true, _error: null }
-    ));
+    setSelectedNode(prev => prev ? { ...prev, _loading: true, _error: null } : prev);
 
     try {
       const t0   = Date.now();
       const rows = await runSearch(svc.service_spl, { count: 10_000 });
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      setOpenTabs(prev => prev.map(t =>
-        t.id !== tabId ? t : {
-          ...t,
-          _loading:   false,
-          rows,
-          sampleInfo: `${rows.length} row${rows.length !== 1 ? 's' : ''} · fetched in ${elapsed}s`,
-        }
-      ));
+      setSelectedNode(prev =>
+        prev ? { ...prev, _loading: false, rows,
+                 sampleInfo: `${rows.length} row${rows.length !== 1 ? 's' : ''} · ${elapsed}s` }
+             : prev
+      );
     } catch (e) {
-      setOpenTabs(prev => prev.map(t =>
-        t.id !== tabId ? t : { ...t, _loading: false, _error: e.message }
-      ));
+      setSelectedNode(prev =>
+        prev ? { ...prev, _loading: false, _error: e.message } : prev
+      );
     }
-  }, [openTabs, mappings, services]);
-
-  const activeNode = openTabs.find(t => t.id === activeTab) ?? null;
+  }, [selectedNode, mappings, services]);
 
   return (
     <div style={{
@@ -182,10 +145,8 @@ export default function App() {
       background:    '#1e1e1e',
       overflow:      'hidden',
     }}>
-      {/* ── Top nav ── */}
       <AppTabs active={appTab} onSelect={setAppTab} isAdmin={isAdmin} />
 
-      {/* ── Monitor ── */}
       {appTab === 'monitor' && (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <div style={{
@@ -196,25 +157,21 @@ export default function App() {
             <StateTree
               tree={tree}
               loading={treeLoading}
-              selectedId={activeNode?.id}
+              selectedId={selectedNode?.id}
               onSelect={handleSelect}
               onReload={reloadTree}
             />
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <MetricsPanel
-              openTabs={openTabs}
-              activeTab={activeTab}
-              activeNode={activeNode}
-              onSelectTab={setActiveTab}
-              onCloseTab={handleCloseTab}
-              onRefreshTab={handleRefreshTab}
+              selectedNode={selectedNode}
+              results={results}
+              onRefresh={handleRefresh}
             />
           </div>
         </div>
       )}
 
-      {/* ── Services ── */}
       {appTab === 'services' && (
         <ServicesStateTab
           results={results}
@@ -223,7 +180,6 @@ export default function App() {
         />
       )}
 
-      {/* ── Config (admin only) ── */}
       {appTab === 'config' && isAdmin && <ConfigTab />}
       {appTab === 'config' && !isAdmin && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>

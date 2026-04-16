@@ -10,80 +10,165 @@ const STATUS_COLOR = {
   unknown:  '#555555',
 };
 
-// ── Tab bar ──────────────────────────────────────────────────────────────────
-function TabBar({ tabs, activeTab, onSelect, onClose }) {
+function statusBadge(status) {
+  const color = STATUS_COLOR[status] || STATUS_COLOR.unknown;
+  return (
+    <span style={{
+      display:      'inline-block',
+      padding:      '1px 7px',
+      borderRadius: '3px',
+      fontSize:     '10px',
+      fontWeight:   '700',
+      background:   color,
+      color:        '#fff',
+      textTransform: 'uppercase',
+    }}>
+      {status || 'unknown'}
+    </span>
+  );
+}
+
+// ── No Data alert box ─────────────────────────────────────────────────────────
+function NoDataBox() {
   return (
     <div style={{
-      display:       'flex',
-      background:    '#252535',
-      borderBottom:  '1px solid #3a3a5a',
-      flexShrink:    0,
-      overflowX:     'auto',
+      margin:       '16px',
+      padding:      '10px 14px',
+      background:   '#1e2a36',
+      border:       '1px solid #445566',
+      borderLeft:   '3px solid #445566',
+      borderRadius: '4px',
+      color:        '#7799aa',
+      fontSize:     '12px',
+      display:      'flex',
+      alignItems:   'center',
+      gap:          '10px',
     }}>
-      {tabs.length === 0 && (
-        <div style={{ padding: '7px 14px', color: '#555', fontSize: '11px' }}>Metrics</div>
-      )}
-      {tabs.map(tab => {
-        const active = tab.id === activeTab;
-        return (
-          <div
-            key={tab.id}
-            onClick={() => onSelect(tab.id)}
-            style={{
-              display:    'flex',
-              alignItems: 'center',
-              gap:        '6px',
-              padding:    '6px 12px',
-              cursor:     'pointer',
-              background: active ? '#3a3a5c' : 'transparent',
-              color:      active ? '#ffffff' : '#8888aa',
-              borderRight: '1px solid #3a3a5a',
-              borderBottom: active ? '2px solid #5599ff' : '2px solid transparent',
-              fontSize:   '11px',
-              whiteSpace: 'nowrap',
-              userSelect: 'none',
-            }}
-          >
-            {/* Status dot — spinner if loading */}
-            {tab._loading ? (
-              <span style={{ fontSize: '10px', color: '#888' }}>&#8987;</span>
-            ) : (
-              <span style={{
-                width: '8px', height: '8px', borderRadius: '2px', flexShrink: 0,
-                background: STATUS_COLOR[tab.status] || STATUS_COLOR.unknown,
-              }} />
-            )}
-            {tab.label}
-            <span
-              onClick={e => { e.stopPropagation(); onClose(tab.id); }}
-              style={{ color: '#555', marginLeft: '4px', fontSize: '14px', lineHeight: 1 }}
-              title="Close"
-            >
-              &times;
-            </span>
-          </div>
-        );
-      })}
+      <span style={{ fontSize: '16px', lineHeight: 1 }}>&#9432;</span>
+      <span>
+        <strong style={{ color: '#99aabb' }}>No data</strong>
+        &nbsp;&mdash; the collector has not returned results for this node yet,
+        or the service SPL produced no rows.
+      </span>
     </div>
   );
 }
 
-// ── Results table ─────────────────────────────────────────────────────────────
+// ── Title bar (shared) ────────────────────────────────────────────────────────
+function TitleBar({ node, onRefresh }) {
+  const color = STATUS_COLOR[node.status] || STATUS_COLOR.unknown;
+  return (
+    <div style={{
+      background:   '#3a3a5a',
+      color:        '#ffffff',
+      padding:      '7px 12px',
+      fontSize:     '11px',
+      borderBottom: '1px solid #2a2a4a',
+      flexShrink:   0,
+      display:      'flex',
+      alignItems:   'center',
+      justifyContent: 'space-between',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
+        <span style={{
+          display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px',
+          background: color,
+        }} />
+        {node.label}
+        {node._svcName && (
+          <span style={{ color: '#8888cc', fontWeight: '400', fontSize: '10px' }}>
+            &nbsp;·&nbsp;{node._svcName}
+          </span>
+        )}
+      </div>
+      {node._live && (
+        <button
+          onClick={onRefresh}
+          disabled={node._loading}
+          style={{
+            background: 'none', border: '1px solid #5555aa',
+            borderRadius: '3px', color: node._loading ? '#555' : '#aaa',
+            cursor: node._loading ? 'default' : 'pointer',
+            padding: '2px 8px', fontSize: '11px',
+          }}
+        >
+          &#x21BB; Refresh
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Sub-title bar ─────────────────────────────────────────────────────────────
+function SubBar({ node, search, onSearch }) {
+  return (
+    <div style={{
+      background:   '#ebebf5',
+      borderBottom: '1px solid #d0d0e0',
+      padding:      '6px 12px',
+      flexShrink:   0,
+    }}>
+      <div style={{ color: '#333', marginBottom: '4px', fontSize: '12px' }}>
+        {node.description}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ color: '#888', fontSize: '11px' }}>
+          {node._loading
+            ? 'Running search\u2026'
+            : node.sampleInfo
+              ? `\u21BB\u00A0${node.sampleInfo}`
+              : ''}
+        </div>
+        {!node._loading && onSearch && (
+          <input
+            type="text"
+            value={search}
+            onChange={e => onSearch(e.target.value)}
+            placeholder="Filter rows\u2026"
+            style={{
+              padding: '3px 8px', fontSize: '11px',
+              border: '1px solid #bbb', borderRadius: '3px',
+              background: '#fff', color: '#333', outline: 'none', width: '160px',
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Status bar (leaf) ─────────────────────────────────────────────────────────
+function StatusBar({ status, rowCount }) {
+  const color = STATUS_COLOR[status] ?? '#888';
+  return (
+    <div style={{
+      background: color,
+      color:      status === 'ok' ? '#1a5c34' : '#ffffff',
+      padding:    '4px 12px',
+      fontSize:   '11px',
+      fontWeight: '600',
+      flexShrink: 0,
+      display:    'flex',
+      gap:        '20px',
+    }}>
+      <span>status&nbsp;<strong>{(status || 'unknown').toUpperCase()}</strong></span>
+      <span>rows&nbsp;<strong>{rowCount}</strong></span>
+    </div>
+  );
+}
+
+// ── Results table (leaf) ──────────────────────────────────────────────────────
 function ResultsTable({ columns, rows }) {
   const tdBase = {
-    padding:       '5px 10px',
-    borderBottom:  '1px solid #e8e8e8',
-    color:         '#222',
-    fontSize:      '12px',
-    whiteSpace:    'nowrap',
+    padding:      '5px 10px',
+    borderBottom: '1px solid #e8e8e8',
+    color:        '#222',
+    fontSize:     '12px',
+    whiteSpace:   'nowrap',
   };
 
   if (!columns || columns.length === 0) {
-    return (
-      <div style={{ color: '#999', padding: '24px', fontSize: '12px' }}>
-        No columns defined.
-      </div>
-    );
+    return <div style={{ color: '#999', padding: '24px', fontSize: '12px' }}>No columns defined.</div>;
   }
 
   return (
@@ -93,15 +178,15 @@ function ResultsTable({ columns, rows }) {
           {columns.map(col => (
             <th key={col} style={{
               ...tdBase,
-              background:     '#eaeaea',
-              color:          '#444',
-              fontWeight:     '600',
-              textTransform:  'uppercase',
-              fontSize:       '10px',
-              letterSpacing:  '0.5px',
-              borderBottom:   '2px solid #ccc',
-              position:       'sticky',
-              top:            0,
+              background:    '#eaeaea',
+              color:         '#444',
+              fontWeight:    '600',
+              textTransform: 'uppercase',
+              fontSize:      '10px',
+              letterSpacing: '0.5px',
+              borderBottom:  '2px solid #ccc',
+              position:      'sticky',
+              top:           0,
             }}>
               {col}
             </th>
@@ -118,24 +203,14 @@ function ResultsTable({ columns, rows }) {
         ) : rows.map((row, i) => (
           <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f7f7f7' }}>
             {columns.map(col => {
-              const val = row[col] ?? '';
-              // Colour service_status values inline
+              const val      = row[col] ?? '';
               const isStatus = col === 'service_status';
               return (
                 <td key={col} style={tdBase}>
-                  {isStatus ? (
-                    <span style={{
-                      display:      'inline-block',
-                      padding:      '1px 7px',
-                      borderRadius: '3px',
-                      fontSize:     '10px',
-                      fontWeight:   '700',
-                      background:   STATUS_COLOR[String(val).toLowerCase()] || '#888',
-                      color:        '#fff',
-                    }}>
-                      {String(val).toUpperCase()}
-                    </span>
-                  ) : String(val)}
+                  {isStatus
+                    ? statusBadge(String(val).toLowerCase())
+                    : String(val)
+                  }
                 </td>
               );
             })}
@@ -146,173 +221,180 @@ function ResultsTable({ columns, rows }) {
   );
 }
 
+// ── Group view (children summary) ─────────────────────────────────────────────
+function GroupView({ node, results }) {
+  const children = node.children || [];
+
+  // Index results by node_id for quick lookup
+  const resultsByNode = {};
+  results.forEach(r => {
+    if (!r.node_id) return;
+    if (!resultsByNode[r.node_id] || r.last_checked_time > resultsByNode[r.node_id].last_checked_time) {
+      resultsByNode[r.node_id] = r;
+    }
+  });
+
+  function formatTime(epochStr) {
+    if (!epochStr) return '—';
+    const ms = parseInt(epochStr, 10) * 1000;
+    if (isNaN(ms)) return '—';
+    const d = new Date(ms);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  if (children.length === 0) {
+    return (
+      <div style={{ padding: '24px', color: '#888', fontSize: '12px', textAlign: 'center' }}>
+        No child nodes.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {children.map(child => {
+        const res   = resultsByNode[child.id];
+        const color = STATUS_COLOR[child.status] || STATUS_COLOR.unknown;
+        const isGroup = child.children && child.children.length > 0;
+
+        return (
+          <div key={child.id} style={{
+            display:      'flex',
+            alignItems:   'center',
+            gap:          '10px',
+            padding:      '8px 10px',
+            marginBottom: '4px',
+            background:   '#ffffff',
+            border:       '1px solid #e0e0e0',
+            borderLeft:   `3px solid ${color}`,
+            borderRadius: '3px',
+          }}>
+            {/* Status dot */}
+            <span style={{
+              width: '10px', height: '10px', borderRadius: '2px',
+              background: color, flexShrink: 0,
+            }} />
+
+            {/* Label */}
+            <span style={{ flex: 1, color: '#222', fontWeight: '500' }}>
+              {child.label}
+              {isGroup && (
+                <span style={{ color: '#aaa', fontWeight: '400', marginLeft: '6px', fontSize: '10px' }}>
+                  ({child.children.length} items)
+                </span>
+              )}
+            </span>
+
+            {/* Last checked */}
+            {res?.last_checked_time && (
+              <span style={{ color: '#888', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                checked&nbsp;{formatTime(res.last_checked_time)}
+              </span>
+            )}
+
+            {/* Status badge */}
+            {statusBadge(child.status)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main MetricsPanel ─────────────────────────────────────────────────────────
-export default function MetricsPanel({
-  openTabs, activeTab, activeNode,
-  onSelectTab, onCloseTab, onRefreshTab,
-}) {
+export default function MetricsPanel({ selectedNode, results, onRefresh }) {
   const [search, setSearch] = useState('');
 
-  const filteredRows = activeNode && !activeNode._loading
-    ? (activeNode.rows || []).filter(row =>
+  // Reset search when node changes
+  const nodeId = selectedNode?.id;
+  const [lastNodeId, setLastNodeId] = useState(null);
+  if (nodeId !== lastNodeId) {
+    setLastNodeId(nodeId);
+    if (search) setSearch('');
+  }
+
+  const filteredRows = selectedNode && !selectedNode._loading
+    ? (selectedNode.rows || []).filter(row =>
         !search || Object.values(row).some(v =>
           String(v).toLowerCase().includes(search.toLowerCase())
         )
       )
     : [];
 
+  const isNoData = selectedNode?.status === 'no_data';
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (!selectedNode) {
+    return (
+      <div style={{
+        flex: 1, height: '100%', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        color: '#999', flexDirection: 'column', gap: '8px',
+        background: '#f4f4f4',
+      }}>
+        <span style={{ fontSize: '32px' }}>&#9672;</span>
+        <span style={{ fontSize: '13px' }}>Select a node from the State Tree</span>
+      </div>
+    );
+  }
+
+  // ── Group node ─────────────────────────────────────────────────────────────
+  if (selectedNode.type === 'group') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f4f4f4' }}>
+        <TitleBar node={selectedNode} onRefresh={onRefresh} />
+        <SubBar node={{ ...selectedNode, _loading: false, sampleInfo: '' }} search={null} onSearch={null} />
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {isNoData && <NoDataBox />}
+          <GroupView node={selectedNode} results={results} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Leaf node ──────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f4f4f4' }}>
+      <TitleBar node={selectedNode} onRefresh={onRefresh} />
+      <SubBar node={selectedNode} search={search} onSearch={setSearch} />
 
-      {/* Tab bar */}
-      <TabBar
-        tabs={openTabs}
-        activeTab={activeTab}
-        onSelect={onSelectTab}
-        onClose={onCloseTab}
-      />
-
-      {/* Empty state */}
-      {!activeNode && (
+      {/* Loading */}
+      {selectedNode._loading && (
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#999', flexDirection: 'column', gap: '8px',
+          flexDirection: 'column', gap: '12px', background: '#fff', color: '#888',
         }}>
-          <span style={{ fontSize: '32px' }}>&#9672;</span>
-          <span style={{ fontSize: '13px' }}>Select a node from the State Tree</span>
+          <span style={{ fontSize: '24px' }}>&#8987;</span>
+          <span style={{ fontSize: '12px' }}>Running search&hellip;</span>
         </div>
       )}
 
-      {/* Active node */}
-      {activeNode && (
+      {/* Error */}
+      {!selectedNode._loading && selectedNode._error && (
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column', gap: '10px', background: '#fff',
+        }}>
+          <div style={{ color: '#cc4444', fontSize: '12px', maxWidth: '480px', textAlign: 'center' }}>
+            Search failed: {selectedNode._error}
+          </div>
+          <button
+            onClick={onRefresh}
+            style={{ padding: '5px 14px', fontSize: '11px', background: '#eee', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Results */}
+      {!selectedNode._loading && !selectedNode._error && (
         <>
-          {/* Title bar */}
-          <div style={{
-            background:   '#3a3a5a',
-            color:        '#ffffff',
-            padding:      '7px 12px',
-            fontSize:     '11px',
-            borderBottom: '1px solid #2a2a4a',
-            flexShrink:   0,
-            display:      'flex',
-            alignItems:   'center',
-            justifyContent: 'space-between',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
-              <span style={{
-                display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px',
-                background: STATUS_COLOR[activeNode.status] || STATUS_COLOR.unknown,
-              }} />
-              {activeNode.label}
-              {activeNode._svcName && (
-                <span style={{ color: '#8888cc', fontWeight: '400', fontSize: '10px' }}>
-                  &nbsp;·&nbsp;{activeNode._svcName}
-                </span>
-              )}
-            </div>
-
-            {/* Refresh button for live nodes */}
-            {activeNode._live && (
-              <button
-                onClick={() => onRefreshTab(activeNode.id)}
-                disabled={activeNode._loading}
-                title="Re-run search"
-                style={{
-                  background: 'none', border: '1px solid #5555aa',
-                  borderRadius: '3px', color: activeNode._loading ? '#555' : '#aaa',
-                  cursor: activeNode._loading ? 'default' : 'pointer',
-                  padding: '2px 8px', fontSize: '11px',
-                }}
-              >
-                &#x21BB; Refresh
-              </button>
-            )}
+          <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff' }}>
+            {isNoData && <NoDataBox />}
+            <ResultsTable columns={selectedNode.columns} rows={filteredRows} />
           </div>
-
-          {/* Description + search bar */}
-          <div style={{
-            background:   '#ebebf5',
-            borderBottom: '1px solid #d0d0e0',
-            padding:      '6px 12px',
-            flexShrink:   0,
-          }}>
-            <div style={{ color: '#333', marginBottom: '4px', fontSize: '12px' }}>
-              {activeNode.description}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ color: '#888', fontSize: '11px' }}>
-                &#x21BB;&nbsp;{activeNode.sampleInfo || (activeNode._loading ? 'Running search\u2026' : '')}
-              </div>
-              {!activeNode._loading && (
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Filter rows\u2026"
-                  style={{
-                    padding: '3px 8px', fontSize: '11px',
-                    border: '1px solid #bbb', borderRadius: '3px',
-                    background: '#fff', color: '#333', outline: 'none', width: '160px',
-                  }}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Loading spinner */}
-          {activeNode._loading && (
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: '12px', background: '#fff', color: '#888',
-            }}>
-              <span style={{ fontSize: '24px' }}>&#8987;</span>
-              <span style={{ fontSize: '12px' }}>Running search&hellip;</span>
-            </div>
-          )}
-
-          {/* Error state */}
-          {!activeNode._loading && activeNode._error && (
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: '10px', background: '#fff',
-            }}>
-              <div style={{ color: '#cc4444', fontSize: '12px', maxWidth: '480px', textAlign: 'center' }}>
-                Search failed: {activeNode._error}
-              </div>
-              <button
-                onClick={() => onRefreshTab(activeNode.id)}
-                style={{ padding: '5px 14px', fontSize: '11px', background: '#eee', border: '1px solid #ccc', borderRadius: '3px', cursor: 'pointer' }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {/* Results table */}
-          {!activeNode._loading && !activeNode._error && (
-            <div style={{ flex: 1, overflowY: 'auto', background: '#ffffff' }}>
-              <ResultsTable columns={activeNode.columns} rows={filteredRows} />
-            </div>
-          )}
-
-          {/* Status bar */}
-          {!activeNode._loading && !activeNode._error && (
-            <div style={{
-              background: STATUS_COLOR[activeNode.status] ?? '#888',
-              color:      activeNode.status === 'ok' ? '#1a5c34' : '#ffffff',
-              padding:    '4px 12px',
-              fontSize:   '11px',
-              fontWeight: '600',
-              flexShrink: 0,
-              display:    'flex',
-              gap:        '20px',
-            }}>
-              <span>
-                status&nbsp;<strong>{(activeNode.status || 'unknown').toUpperCase()}</strong>
-              </span>
-              <span>rows&nbsp;<strong>{filteredRows.length}</strong></span>
-            </div>
-          )}
+          <StatusBar status={selectedNode.status} rowCount={filteredRows.length} />
         </>
       )}
     </div>
