@@ -109,7 +109,9 @@ def kv_upsert(base_url, session_key, collection, key, doc):
 # 33 nodes: 7 domains, 3 groups, 23 leaves.
 # Output fields: node_id, parent_node_id (empty = root), node_label.
 
-TREE_SPL = (
+TREE_SPL = "| inputlookup bm_tree.csv"
+
+_TREE_SPL_OLD = (
     "| makeresults count=33\n"
     "| streamstats count as row\n"
     "| eval node_id = case(\n"
@@ -218,7 +220,7 @@ TREE_SPL = (
     '    node_id="leaf_ca_prices",     "CA Prices"\n'
     ")\n"
     "| fields node_id, parent_node_id, node_label"
-)
+)  # _TREE_SPL_OLD kept for reference
 
 
 # ─── Helper: build a Volume Diff SPL ──────────────────────────────────────────
@@ -229,7 +231,7 @@ TREE_SPL = (
 
 def _vol_diff_spl(source, database):
     return "\n".join([
-        f'sourcetype=SQL source="{source}" earliest=-20m',
+        f'sourcetype=SQL source="{source}" earliest=-2h',
         r'| rex field=_raw "Database=\"(?<Database>[^\"]+)\""',
         r'| rex field=_raw "Percent Diff=\"(?<pct_diff>[^\"]+)\""',
         r'| rex field=_raw "Today=\"(?<Today>[^\"]+)\""',
@@ -254,7 +256,7 @@ def _vol_diff_spl(source, database):
 
 def _by_source_spl(source):
     return "\n".join([
-        f'sourcetype=SQL source="{source}" earliest=-20m',
+        f'sourcetype=SQL source="{source}" earliest=-2h',
         r'| rex field=_raw "source=\"(?<mkt_source>[^\"]+)\""',
         r'| rex field=_raw "TotalTradeCount=\"(?<cnt>[^\"]+)\""',
         "| eval cnt=tonumber(cnt)",
@@ -272,7 +274,7 @@ def _by_source_spl(source):
 
 def _tradedate_spl(database):
     return "\n".join([
-        'sourcetype=SQL source="Trade_Capture_Tradedate_check" earliest=-20m',
+        'sourcetype=SQL source="Trade_Capture_Tradedate_check" earliest=-2h',
         r'| rex field=_raw "Database=\"(?<Database>[^\"]+)\""',
         r'| rex field=_raw "currentDate=\"(?<currentDate>[^\"]+)\""',
         r'| rex field=_raw "PriorTradeDate=\"(?<PriorTradeDate>[^\"]+)\""',
@@ -297,7 +299,7 @@ def _tradedate_spl(database):
 def _late_starts_spl(team):
     escaped = team.replace('"', '\\"')
     return "\n".join([
-        'sourcetype=SQL source="Start" earliest=-20m',
+        'sourcetype=SQL source="Start" earliest=-2h',
         r'| rex field=_raw "Team Responsible=\"(?<team>[^\"]+)\""',
         r'| rex field=_raw "BatchName=\"(?<batch_name>[^\"]+)\""',
         r'| rex field=_raw "batch_id=\"(?<batch_id>[^\"]+)\""',
@@ -460,7 +462,7 @@ SERVICES = [
         "service_name":        "stored_procedures",
         "service_description": "Running stored procedures — elapsed runtime check",
         "service_spl": "\n".join([
-            'sourcetype=SQL source="Stored_Procedure" earliest=-20m',
+            'sourcetype=SQL source="Stored_Procedure" earliest=-2h',
             r'| rex field=_raw "StoredProcedureName=\"(?<proc_name>[^\"]+)\""',
             r'| rex field=_raw "BatchName=\"(?<batch_name>[^\"]+)\""',
             r'| rex field=_raw "RunTime=\"1900-01-01 (?<rh>\d+):(?<rm>\d+):"',
@@ -525,7 +527,7 @@ SERVICES = [
         "service_name":        "mics_ready_queue",
         "service_description": "MICS Ready Queue depth by source",
         "service_spl": "\n".join([
-            'sourcetype=SQL source="MICS_READY_Queue" earliest=-20m',
+            'sourcetype=SQL source="MICS_READY_Queue" earliest=-2h',
             r'| rex field=_raw "SOURCE=\"(?<queue_source>[^\"]+)\""',
             r'| rex field=_raw "#_ON_QUEUE=\"(?<queue_count>[^\"]+)\""',
             "| eval queue_count=tonumber(trim(queue_count))",
@@ -545,7 +547,7 @@ SERVICES = [
         "service_name":        "mics_top5_sessions",
         "service_description": "MICS Top 5 Sessions — queue count per session",
         "service_spl": "\n".join([
-            'sourcetype=SQL source="MICS_Queue_Top_5_Sessions" earliest=-20m',
+            'sourcetype=SQL source="MICS_Queue_Top_5_Sessions" earliest=-2h',
             r'| rex field=_raw "SESSION=\"(?<session>[^\"]+)\""',
             r'| rex field=_raw "COUNT=\"(?<session_count>[^\"]+)\""',
             r'| rex field=_raw "SOURCE=\"(?<queue_source>[^\"]+)\""',
@@ -571,7 +573,7 @@ SERVICES = [
         "service_name":        "db_blocking_mics",
         "service_description": "MICS database blocking sessions — elapsed time check",
         "service_spl": "\n".join([
-            'sourcetype=SQL source="DB_Blocking_SQL-PRODAG01" earliest=-20m',
+            'sourcetype=SQL source="DB_Blocking_SQL-PRODAG01" earliest=-2h',
             r'| rex field=_raw "session_id=\"(?<session_id>[^\"]+)\""',
             r'| rex field=_raw "blocking_session_id=\"(?<blocking_session>[^\"]+)\""',
             r'| rex field=_raw "database_name=\"(?<db_name>[^\"]+)\""',
