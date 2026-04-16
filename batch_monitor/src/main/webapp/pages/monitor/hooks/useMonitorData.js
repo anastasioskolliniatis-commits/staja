@@ -34,10 +34,10 @@ const SEVERITY = {
 };
 
 function worstStatus(statuses) {
-  if (!statuses.length) return 'unknown';
+  if (!statuses.length) return 'no_data';
   return statuses.reduce((worst, s) =>
     (SEVERITY[s] ?? -1) > (SEVERITY[worst] ?? -1) ? s : worst
-  , 'ok');
+  , statuses[0]);
 }
 
 /**
