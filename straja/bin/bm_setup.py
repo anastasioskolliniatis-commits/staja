@@ -38,7 +38,7 @@ import getpass
 
 DEFAULT_URL = "https://localhost:8089"
 DEFAULT_USER = "admin"
-APP_NAMESPACE = "nobody/batch_monitor"
+APP_NAMESPACE = "nobody/straja"
 
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False

@@ -19,7 +19,7 @@ import urllib.error
 import ssl
 
 SPLUNK_BASE_URL = "https://localhost:8089"
-APP_NAMESPACE   = "nobody/batch_monitor"
+APP_NAMESPACE   = "nobody/straja"
 KV_BASE         = f"{SPLUNK_BASE_URL}/servicesNS/{APP_NAMESPACE}/storage/collections/data"
 
 DEFAULT_TREE_SPL = "| inputlookup bm_tree.csv"
