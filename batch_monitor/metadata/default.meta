@@ -6,22 +6,27 @@ export = system
 access = read : [ * ], write : [ admin, power ]
 export = system
 
-[transforms/bm_tree_config]
-access = read : [ * ], write : [ admin, sc_admin ]
+# KV collections — writable by scripted inputs (nobody) and admins
+[storage/collections/data/bm_tree_config]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
 export = system
 
-[transforms/bm_services]
-access = read : [ * ], write : [ admin, sc_admin ]
+[storage/collections/data/bm_services]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
 export = system
 
-[transforms/bm_mappings]
-access = read : [ * ], write : [ admin, sc_admin ]
+[storage/collections/data/bm_mappings]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
 export = system
 
-[transforms/bm_results]
-access = read : [ * ], write : [ admin, sc_admin ]
+[storage/collections/data/bm_results]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
 export = system
 
-[transforms/bm_run_log]
+[storage/collections/data/bm_run_log]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[transforms]
 access = read : [ * ], write : [ admin, sc_admin ]
 export = system
