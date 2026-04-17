@@ -3,6 +3,7 @@ import StateTree        from './components/StateTree';
 import MetricsPanel     from './components/MetricsPanel';
 import AppTabs          from './components/AppTabs';
 import ServicesStateTab from './components/ServicesStateTab';
+import AlertsTab        from './components/AlertsTab';
 import ConfigTab        from './components/ConfigTab';
 import { useCurrentUser }  from './hooks/useCurrentUser';
 import { useMonitorData }  from './hooks/useMonitorData';
@@ -203,6 +204,8 @@ export default function App() {
           onRefresh={fetchResults}
         />
       )}
+
+      {appTab === 'alerts' && <AlertsTab />}
 
       {appTab === 'config' && isAdmin && <ConfigTab />}
       {appTab === 'config' && !isAdmin && (

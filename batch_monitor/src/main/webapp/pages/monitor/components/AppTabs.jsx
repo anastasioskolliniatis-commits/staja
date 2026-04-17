@@ -5,6 +5,7 @@
 const TABS = [
   { id: 'monitor',  label: 'Monitor'  },
   { id: 'services', label: 'Services' },
+  { id: 'alerts',   label: 'Alerts',  icon: '🔔' },
   { id: 'config',   label: 'Config',  adminOnly: true, icon: '⚙' },
 ];
 
