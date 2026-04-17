@@ -1,0 +1,32 @@
+[]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+[views]
+access = read : [ * ], write : [ admin, power ]
+export = system
+
+# KV collections — writable by scripted inputs (nobody) and admins
+[storage/collections/data/bm_tree_config]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[storage/collections/data/bm_services]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[storage/collections/data/bm_mappings]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[storage/collections/data/bm_results]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[storage/collections/data/bm_run_log]
+access = read : [ * ], write : [ admin, sc_admin, nobody ]
+export = system
+
+[transforms]
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system

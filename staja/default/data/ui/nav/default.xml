@@ -1,0 +1,4 @@
+<nav search_view="search" color="#1e1e2e">
+  <view name="monitor" default="true" label="Monitor"/>
+  <view name="search" label="Search"/>
+</nav>

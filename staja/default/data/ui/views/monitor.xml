@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<view template="batch_monitor:/templates/monitor.html" type="html" isDashboard="False">
+    <label>Batch Monitor</label>
+</view>

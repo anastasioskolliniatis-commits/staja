@@ -1,0 +1,34 @@
+node_id,parent_node_id,node_label
+domain_trade,,Trade Activity
+domain_dq,,Data Quality
+domain_batch,,Batch Monitoring
+domain_sla,,SLA & Governance
+domain_queue,,Queue Health
+domain_dbhealth,,Database Health
+domain_refdata,,Reference Data
+grp_vol_daily,domain_trade,Volume Diff - Daily
+grp_vol_30m,domain_trade,Volume Diff - Last 30 Min
+grp_late_starts,domain_batch,Late Starts
+leaf_vol_daily_1a,grp_vol_daily,TradeCapture1A
+leaf_vol_daily_1b,grp_vol_daily,TradeCapture1B
+leaf_vol_30m_1a,grp_vol_30m,TradeCapture1A
+leaf_vol_30m_1b,grp_vol_30m,TradeCapture1B
+leaf_eq,domain_trade,Equities & Equity Options
+leaf_fut,domain_trade,Futures & Futures Options
+leaf_dq_1a,domain_dq,TradeCapture1A
+leaf_dq_1b,domain_dq,TradeCapture1B
+leaf_late_saciv,grp_late_starts,SACIV
+leaf_late_cdp,grp_late_starts,CDP
+leaf_late_mtc,grp_late_starts,MTC
+leaf_late_rereiv,grp_late_starts,REREIV
+leaf_late_sblt,grp_late_starts,SBLT
+leaf_stored_proc,domain_batch,Stored Procedures
+leaf_sla_trial_balance,domain_sla,Trial Balance
+leaf_sla_cl_acct,domain_sla,CL_ACCT_GRP_Balances
+leaf_sla_cg3_cpm,domain_sla,CG3-1 CPM
+leaf_sla_cg3_rb,domain_sla,CG3-1 Rb
+leaf_sla_mics_end,domain_sla,MICS End (Last job)
+leaf_mics_queue,domain_queue,MICS Ready Queue
+leaf_mics_top5,domain_queue,MICS Top 5 Sessions
+leaf_db_blocking,domain_dbhealth,DB Blocking - MICS
+leaf_ca_prices,domain_refdata,CA Prices
