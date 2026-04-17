@@ -29,14 +29,20 @@ export default function AppTabs({ active, onSelect, isAdmin }) {
         borderRight: '1px solid #2a2a3e',
         marginRight: '6px',
       }}>
-        {/* Vigil "eye" icon */}
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="12" cy="12" rx="10" ry="6" stroke="#5599ff" strokeWidth="1.8"/>
-          <circle cx="12" cy="12" r="3" fill="#5599ff"/>
-          <circle cx="12" cy="12" r="1.2" fill="#15151f"/>
+        {/* Straja — watchtower icon */}
+        <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          {/* Tower silhouette with battlements */}
+          <path
+            d="M4 19 L4 7 L4 3 L7 3 L7 7 L8.5 7 L8.5 3 L11.5 3 L11.5 7 L13 7 L13 3 L16 3 L16 7 L16 19 Z"
+            fill="#5599ff"
+          />
+          {/* Arched window */}
+          <rect x="8.6" y="8.8" width="2.8" height="3.2" rx="1.4" fill="#15151f"/>
+          {/* Arched door (cutout to bottom) */}
+          <path d="M8.2 19.5 L8.2 15 Q8.2 13 10 13 Q11.8 13 11.8 15 L11.8 19.5 Z" fill="#15151f"/>
         </svg>
         <span style={{ color: '#e8e8f0', fontSize: '13px', fontWeight: '700', letterSpacing: '1.5px' }}>
-          VIGIL
+          STRAJA
         </span>
         <span style={{ color: '#444466', fontSize: '10px', fontWeight: '400', letterSpacing: '0.5px', marginTop: '1px' }}>
           OPS MONITOR

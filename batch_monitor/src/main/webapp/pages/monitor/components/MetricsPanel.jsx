@@ -424,10 +424,13 @@ export default function MetricsPanel({ selectedNode, results, onRefresh }) {
         flexDirection: 'column', gap: '10px',
         background: '#f4f5f8',
       }}>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-          <ellipse cx="12" cy="12" rx="10" ry="6" stroke="#ccc" strokeWidth="1.5"/>
-          <circle cx="12" cy="12" r="3" fill="#ccc"/>
-          <circle cx="12" cy="12" r="1.2" fill="#f4f5f8"/>
+        <svg width="40" height="40" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.25 }}>
+          <path
+            d="M4 19 L4 7 L4 3 L7 3 L7 7 L8.5 7 L8.5 3 L11.5 3 L11.5 7 L13 7 L13 3 L16 3 L16 7 L16 19 Z"
+            fill="#888"
+          />
+          <rect x="8.6" y="8.8" width="2.8" height="3.2" rx="1.4" fill="#f4f5f8"/>
+          <path d="M8.2 19.5 L8.2 15 Q8.2 13 10 13 Q11.8 13 11.8 15 L11.8 19.5 Z" fill="#f4f5f8"/>
         </svg>
         <span style={{ fontSize: '13px', color: '#bbb' }}>Select a node from the State Tree</span>
       </div>
