@@ -53,29 +53,10 @@ tar -czf "$STRAJA_SPL" \
 
 echo "    OK: $STRAJA_SPL ($(du -sh "$STRAJA_SPL" | cut -f1))"
 
-# ── 3. Package ta_sql_hec ─────────────────────────────────────────────────────
-HEC_SPL="dist/ta_sql_hec-${VERSION}.spl"
-echo "--> Packaging $HEC_SPL"
-
-tar -czf "$HEC_SPL" \
-  --exclude="ta_sql_hec/.gitignore" \
-  --exclude="ta_sql_hec/local" \
-  --exclude="ta_sql_hec/sampledata" \
-  --exclude="ta_sql_hec/bin/send_sample.py" \
-  --exclude="ta_sql_hec/__pycache__" \
-  --exclude="ta_sql_hec/bin/__pycache__" \
-  ta_sql_hec/
-
-echo "    OK: $HEC_SPL ($(du -sh "$HEC_SPL" | cut -f1))"
-
-# ── 4. Verify contents ────────────────────────────────────────────────────────
+# ── 3. Verify contents ───────────────────────────────────────────────────────
 echo ""
 echo "--> Verifying straja package contents:"
 tar -tzf "$STRAJA_SPL" | grep -v "/$" | sort | sed 's/^/    /'
-
-echo ""
-echo "--> Verifying ta_sql_hec package contents:"
-tar -tzf "$HEC_SPL" | grep -v "/$" | sort | sed 's/^/    /'
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
