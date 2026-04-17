@@ -1,0 +1,4 @@
+# Treat package files as binary — prevent line-ending corruption
+*.spl     binary
+*.tar.gz  binary
+*.gz      binary
