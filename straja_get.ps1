@@ -2,8 +2,8 @@
 # Run in PowerShell on your business laptop.
 # Downloads the staja app from GitHub and creates it locally.
 
-$base = "https://raw.githubusercontent.com/anastasioskolliniatis-commits/staja/main/staja"
-$root = Join-Path (Get-Location) "staja"
+$base = "https://raw.githubusercontent.com/anastasioskolliniatis-commits/straja/main/straja"
+$root = Join-Path (Get-Location) "straja"
 
 $files = @(
     "default/app.conf",
@@ -35,9 +35,9 @@ foreach ($f in $files) {
 }
 
 Write-Host ""
-Write-Host "==> Done. staja\ is ready at $root"
+Write-Host "==> Done. straja\ is ready at $root"
 Write-Host ""
-Write-Host "Transfer staja\ to the Splunk server:"
-Write-Host "   /opt/splunk/etc/apps/staja"
+Write-Host "Transfer straja\ to the Splunk server:"
+Write-Host "   /opt/splunk/etc/apps/straja"
 Write-Host ""
 Write-Host "Then restart Splunk and run bm_setup.py"

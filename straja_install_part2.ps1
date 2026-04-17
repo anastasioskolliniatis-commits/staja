@@ -1,5 +1,5 @@
 # Straja Part 2 — UI bundle (monitor.js)
-$root = Join-Path (Get-Location) "staja"
+$root = Join-Path (Get-Location) "straja"
 Write-Host "==> Creating Straja app at $root"
 
 # Directories

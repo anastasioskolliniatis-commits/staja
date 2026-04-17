@@ -5,14 +5,14 @@
 # Paste this entire script into the terminal on the Splunk server.
 # Requires: curl or wget, internet access to raw.githubusercontent.com
 #
-# Usage:  bash staja_install.sh
-#         SPLUNK_HOME=/opt/splunk bash staja_install.sh   # custom path
+# Usage:  bash straja_install.sh
+#         SPLUNK_HOME=/opt/splunk bash straja_install.sh   # custom path
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 SPLUNK_HOME="${SPLUNK_HOME:-/opt/splunk}"
-APP_DIR="$SPLUNK_HOME/etc/apps/staja"
-GITHUB_RAW="https://raw.githubusercontent.com/anastasioskolliniatis-commits/staja/main/staja"
+APP_DIR="$SPLUNK_HOME/etc/apps/straja"
+GITHUB_RAW="https://raw.githubusercontent.com/anastasioskolliniatis-commits/straja/main/straja"
 
 # ── Download helper ───────────────────────────────────────────────────────────
 fetch() {
@@ -58,7 +58,7 @@ is_visible = 1
 label = Straja
 
 [package]
-id = staja
+id = straja
 EOF
 
 cat > "$APP_DIR/default/collections.conf" << 'EOF'
@@ -244,8 +244,8 @@ fetch "$GITHUB_RAW/appserver/templates/monitor.html"               "$APP_DIR/app
 
 # ── Update APP_NAMESPACE in Python scripts to staja ───────────────────────────
 echo "--> Patching app namespace"
-sed -i 's|nobody/batch_monitor|nobody/staja|g' "$APP_DIR/bin/bm_collector.py"
-sed -i 's|nobody/batch_monitor|nobody/staja|g' "$APP_DIR/bin/bm_init.py"
+sed -i 's|nobody/batch_monitor|nobody/straja|g' "$APP_DIR/bin/bm_collector.py"
+sed -i 's|nobody/batch_monitor|nobody/straja|g' "$APP_DIR/bin/bm_init.py"
 
 # ── Permissions ───────────────────────────────────────────────────────────────
 echo "--> Setting permissions"

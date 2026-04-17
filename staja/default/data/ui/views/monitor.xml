@@ -1,4 +1,0 @@
-<?xml version="1.0"?>
-<view template="staja:/templates/monitor.html" type="html" isDashboard="False">
-    <label>Straja</label>
-</view>

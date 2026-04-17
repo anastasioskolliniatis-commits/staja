@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<view template="straja:/templates/monitor.html" type="html" isDashboard="False">
+    <label>Straja</label>
+</view>
